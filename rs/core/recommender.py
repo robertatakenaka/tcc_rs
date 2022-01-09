@@ -1,0 +1,74 @@
+import os
+
+from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import cos_sim, semantic_search
+import numpy as np
+
+from rs import configuration
+
+
+_MODELS_PATH = configuration.MODELS_PATH
+_DEFAULT_MODEL = configuration.DEFAULT_MODEL
+
+
+def _get_model_path(model_name):
+    path =  os.path.join(_MODELS_PATH, model_name)
+    if os.path.isdir(path):
+        return path
+
+
+def _get_sentence_transformer(model_name_or_path=None):
+    model_name_or_path = (
+        model_name_or_path or
+        _get_model_path(model_name_or_path or _DEFAULT_MODEL) or
+        _DEFAULT_MODEL
+    )
+    return SentenceTransformer(model_name_or_path)
+
+
+_SENTENCE_TRANSFORMER = _get_sentence_transformer()
+
+
+def _gen_vectors(sentences, convert_to_tensor=True):
+    return _SENTENCE_TRANSFORMER.encode(sentences, convert_to_tensor=convert_to_tensor)
+
+
+def _search(text, texts):
+
+    # based on https://github.com/UKPLab/sentence-transformers/blob/master/examples/applications/semantic-search/semantic_search_publications.py
+    query_embedding = _gen_vectors(text)
+
+    corpus_embeddings = _gen_vectors(texts)
+
+    search_hits = semantic_search(query_embedding, corpus_embeddings)
+
+    try:
+        # Get the hits for the first query
+        return search_hits[0]
+    except IndexError:
+        return
+
+
+def compare_texts(text, ids, texts):
+    ranking = []
+    for found_item in _search(text, texts):
+        index = found_item['corpus_id']
+        ranking.append({'score': found_item['score'], 'paper_id': ids[index]})
+    return ranking
+
+
+# def get_recommendations(text, ids, texts, min_score):
+#     ranking = []
+#     rejected = []
+
+#     for found_item in _search(text, texts):
+#         index = found_item['corpus_id']
+#         if found_item['score'] > min_score:
+#             ranking.append({'score': found_item['score'], 'paper_id': ids[index]})
+#         else:
+#             rejected.append({'score': found_item['score'], 'paper_id': ids[index]})
+#     return {
+#         "recommended": ranking,
+#         "rejected": rejected,
+#     } 
+
