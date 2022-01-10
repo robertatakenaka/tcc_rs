@@ -336,6 +336,9 @@ class Paper(Document):
             'pub_year',
             'recommendations',
             'network_collection',
+            '$paper_titles__text',
+            '$abstracts__text',
+            '$keywords__text',
         ]
     }
 

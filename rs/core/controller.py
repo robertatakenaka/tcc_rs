@@ -19,6 +19,7 @@ def db_connect(host):
     except:
         exit()
 
+
 def get_subject_areas(journal_issn):
     try:
         journal = Journal.objects(pid=journal_issn)[0]
@@ -32,21 +33,26 @@ def get_paper_by_record_id(_id):
     return db.get_record_by__id(Paper, _id)
 
 
-def search_papers(doi, pid, subject_area, pub_year,
-                  items_per_page, page, order_by):
-    values = [doi, pid, subject_area, pub_year]
-    if not any(values):
+def search_papers(text, subject_area,
+                  begin_year, end_year,
+                  items_per_page, page, order_by,
+                  ):
+    if not text:
         raise exceptions.InsuficientArgumentsToSearchDocumentError(
-            "rs.db.search_papers requires at least one argument: "
-            "doi, pid, subject_area, pub_year"
+            "papers_selection.search_papers requires text parameter"
         )
+    values = [subject_area, begin_year, end_year, ]
     field_names = [
-        'doi_with_lang__value', 'pid', 'subject_areas', 'pub_year',
+        'subject_areas',
+        'pub_year__gte',
+        'pub_year__lte',
     ]
-    kwargs = db._get_kwargs(
-        db._get_query_set_with_or(field_names, values), items_per_page, page, order_by
-    )
-    return db.get_records(Paper, **kwargs)
+    kwargs = {
+        k: v
+        for k, v in zip(field_names, values)
+        if v
+    }
+    return Paper.objects(**kwargs).search_text(text).order_by('$text_score')
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
@@ -57,6 +63,42 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  references,
                  ):
     paper = Paper()
+    return _update_paper(
+        paper,
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+    )
+
+
+def update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+                 subject_areas,
+                 paper_titles,
+                 abstracts,
+                 keywords,
+                 references,
+                 ):
+    return _update_paper(
+        paper,
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+    )
+
+
+def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+                  subject_areas,
+                  paper_titles,
+                  abstracts,
+                  keywords,
+                  references,
+                  ):
     paper.network_collection = network_collection
     paper.pid = pid
     paper.pub_year = pub_year
@@ -89,7 +131,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
 
     paper.recommendable = recommendable or 'no'
     paper = paper.save()
-    
+
     add_references_to_paper(paper, references)
 
     return paper.save()
@@ -147,9 +189,9 @@ def create_source(
         journal, paper_title, source, issn,
         thesis_date, thesis_loc, thesis_country, thesis_degree, thesis_org,
         conf_date, conf_loc, conf_country, conf_name, conf_org,
-        publisher_loc, publisher_country, publisher_name, edition, 
+        publisher_loc, publisher_country, publisher_name, edition,
         source_person_author_surname, source_organization_author,
-    ):
+        ):
 
     _source = Source()
     _source.pub_year = pub_year or None
@@ -272,7 +314,7 @@ def register_recommendations(registered_paper, recommendations):
             recommendation['score'],
         )
     registered_paper.save()
-    
+
 
 def register_rejections(registered_paper, rejections):
     if not rejections:
@@ -286,7 +328,7 @@ def register_rejections(registered_paper, rejections):
             rejection['score'],
         )
     registered_paper.save()
-    
+
 
 def register_linked_by_refs(registered_paper, related_papers_ids):
     if not related_papers_ids:
@@ -301,4 +343,17 @@ def register_linked_by_refs(registered_paper, related_papers_ids):
             related.paper_titles, related.abstracts,
         )
     registered_paper.save()
-    
+
+
+def register_paper_links(registered_paper, recommended, rejected, linked_by_refs):
+    """
+    Register links
+    """
+    # registra os resultados na base de dados
+    if recommended:
+        register_recommendations(registered_paper, recommended)
+    if rejected:
+        register_rejections(registered_paper, rejected)
+    if linked_by_refs:
+        register_linked_by_refs(registered_paper, linked_by_refs)
+

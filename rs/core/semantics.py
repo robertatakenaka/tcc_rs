@@ -1,8 +1,7 @@
 import os
 
 from sentence_transformers import SentenceTransformer
-from sentence_transformers.util import cos_sim, semantic_search
-import numpy as np
+from sentence_transformers.util import semantic_search
 
 from rs import configuration
 
@@ -12,7 +11,7 @@ _DEFAULT_MODEL = configuration.DEFAULT_MODEL
 
 
 def _get_model_path(model_name):
-    path =  os.path.join(_MODELS_PATH, model_name)
+    path = os.path.join(_MODELS_PATH, model_name)
     if os.path.isdir(path):
         return path
 
@@ -55,20 +54,3 @@ def compare_texts(text, ids, texts):
         index = found_item['corpus_id']
         ranking.append({'score': found_item['score'], 'paper_id': ids[index]})
     return ranking
-
-
-# def get_recommendations(text, ids, texts, min_score):
-#     ranking = []
-#     rejected = []
-
-#     for found_item in _search(text, texts):
-#         index = found_item['corpus_id']
-#         if found_item['score'] > min_score:
-#             ranking.append({'score': found_item['score'], 'paper_id': ids[index]})
-#         else:
-#             rejected.append({'score': found_item['score'], 'paper_id': ids[index]})
-#     return {
-#         "recommended": ranking,
-#         "rejected": rejected,
-#     } 
-

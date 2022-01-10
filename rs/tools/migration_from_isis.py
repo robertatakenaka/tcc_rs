@@ -4,8 +4,8 @@ import json
 import csv
 import os
 
-from rs.core import (
-    reception,
+from rs import (
+    rs,
 )
 from rs.utils import files_utils
 
@@ -141,7 +141,7 @@ def register_paper(json_file_path, log_file_path, journals):
         paper = convert_paper(data, journals)
     except KeyError:
         return
-    return reception.receive_paper(paper)
+    return rs.receive_new_paper(paper)
 
 
 def register_papers(list_file_path, log_file_path, journals):
