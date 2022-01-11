@@ -22,24 +22,33 @@ def _get_sentence_transformer(model_name_or_path=None):
         _get_model_path(model_name_or_path or _DEFAULT_MODEL) or
         _DEFAULT_MODEL
     )
+    print("Usando %s" % model_name_or_path)
     return SentenceTransformer(model_name_or_path)
 
 
 _SENTENCE_TRANSFORMER = _get_sentence_transformer()
+print(_SENTENCE_TRANSFORMER)
 
 
 def _gen_vectors(sentences, convert_to_tensor=True):
-    return _SENTENCE_TRANSFORMER.encode(sentences, convert_to_tensor=convert_to_tensor)
+    print(">>> _gen_vectors")
+    print(len(sentences))
+    return _SENTENCE_TRANSFORMER.encode(
+        sentences, convert_to_tensor=convert_to_tensor)
 
 
 def _search(text, texts):
+    print(">>> _search %s" % text)
+    print(len(texts))
 
     # based on https://github.com/UKPLab/sentence-transformers/blob/master/examples/applications/semantic-search/semantic_search_publications.py
     query_embedding = _gen_vectors(text)
 
     corpus_embeddings = _gen_vectors(texts)
 
+    print("Inicio semantic_search")
     search_hits = semantic_search(query_embedding, corpus_embeddings)
+    print("Fim semantic_search")
 
     try:
         # Get the hits for the first query

@@ -1,3 +1,5 @@
+from rs.configuration import handle_text_s
+
 from datetime import datetime
 
 from mongoengine import (
@@ -23,10 +25,7 @@ def utcnow():
 
 def paper_summary(obj):
     data = {
-        "uri_params": {
-            "pid": obj.pid,
-            "collection_id": obj.network_collection,
-        },
+        "uri_params": _paper_uri_params(obj),
         "pub_year": obj.pub_year,
         "doi_with_lang": [item.as_dict() for item in obj.doi_with_lang],
         "paper_titles": [item.as_dict() for item in obj.paper_titles],
@@ -35,6 +34,33 @@ def paper_summary(obj):
     if hasattr(obj, 'score') and obj.score:
         data['score'] = float(obj.score)
     return data
+
+
+def _paper_uri_params(paper):
+    """
+    "uri_params": {
+        "pid": obj.pid,
+        "collection_id": obj.network_collection,
+    }
+    """
+    try:
+        url = CollectionWebsite.objects(acron=paper.network_collection)[0].url
+    except:
+        url = "www.meusite.org"
+    return {"url": url, "id": paper.pid}
+
+
+def _create_linked_paper(paper, score=None):
+    item = Recommendation()
+    item.pid = paper.pid
+    item.network_collection = paper.network_collection
+    item.pub_year = paper.pub_year
+    item.doi_with_lang = paper.doi_with_lang
+    item.paper_titles = paper.paper_titles
+    item.abstracts = paper.abstracts
+    if score:
+        item.score = score
+    return item
 
 
 class TextAndLang(EmbeddedDocument):
@@ -372,71 +398,31 @@ class Paper(Document):
         return data
 
     @property
-    def document_uri_parameters(self):
-        try:
-            url = CollectionWebsite.objects(acron=self.network_collection)[0].url
-        except Exception as e:
-            url = ""
-        return {"url": url, "id": self.pid}
-
-    @property
-    def links(self):
-        response = {}
-        items = []
-        for item in self.recommendations:
-            items.append(item.as_dict())
-        response['recommendations'] = items
-        items = []
-        for item in self.rejections:
-            items.append(item.as_dict())
-        response['rejections'] = items
-        items = []
-        for item in self.linked_by_refs:
-            items.append(item.as_dict())
-        response['linked_by_refs'] = items
-        return response
-
-    @property
     def _id(self):
         return str(self.id)
 
-    def add_recommendation(self, pid, network_collection, pub_year, doi_with_lang, paper_titles, abstracts, score):
-        if not self.recommendations:
-            self.recommendations = []
-        item = Recommendation()
-        item.pid = pid
-        item.network_collection = network_collection
-        item.pub_year = pub_year
-        item.doi_with_lang = doi_with_lang
-        item.paper_titles = paper_titles
-        item.abstracts = abstracts
-        item.score = score
-        self.recommendations.append(item)
+    def get_linked_papers_lists(self, list_names=None, add_uri=None):
+        response = {}
+        list_names = list_names or ("recommendations", "rejections", "linked_by_refs")
+        for list_name in list_names:
+            response[list_name] = []
+            for item in getattr(self, list_name):
+                if add_uri:
+                    response[list_name].append(add_uri(item.as_dict()))
+                else:
+                    response[list_name].append(item.as_dict())
+        return response
 
-    def add_rejection(self, pid, network_collection, pub_year, doi_with_lang, paper_titles, abstracts, score):
-        if not self.rejections:
-            self.rejections = []
-        item = Recommendation()
-        item.pid = pid
-        item.network_collection = network_collection
-        item.pub_year = pub_year
-        item.doi_with_lang = doi_with_lang
-        item.paper_titles = paper_titles
-        item.abstracts = abstracts
-        item.score = score
-        self.rejections.append(item)
-
-    def add_linked_by_refs(self, pid, network_collection, pub_year, doi_with_lang, paper_titles, abstracts):
-        if not self.linked_by_refs:
-            self.linked_by_refs = []
-        item = Recommendation()
-        item.pid = pid
-        item.network_collection = network_collection
-        item.pub_year = pub_year
-        item.doi_with_lang = doi_with_lang
-        item.paper_titles = paper_titles
-        item.abstracts = abstracts
-        self.linked_by_refs.append(item)
+    def add_linked_paper(self, list_name, linked_paper_id, score=None):
+        try:
+            paper = Paper.objects(pk=linked_paper_id)[0]
+        except IndexError as e:
+            print(list_name, linked_paper_id)
+            raise e
+        if hasattr(self, list_name):
+            items = getattr(self, list_name) or []
+            items.append(_create_linked_paper(paper, score))
+            setattr(self, list_name, items)
 
     def add_doi(self, lang, value, creation_status, registration_status):
         if not self.doi_with_lang:
@@ -556,8 +542,7 @@ class Paper(Document):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
-        self.text_s = " ".join([item.text for item in self.abstracts])
-        print(self.text_s)
+        self.text_s = handle_text_s(self)
         return super(Paper, self).save(*args, **kwargs)
 
 

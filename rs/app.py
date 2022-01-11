@@ -1,16 +1,19 @@
 import argparse
 import json
+
 from rs.core import (
     controller,
     papers_selection,
     recommender,
+    tasks,
 )
-from rs import configuration
+from rs import configuration, exceptions
 from rs.utils import files_utils
 
 
 if not configuration.DATABASE_CONNECT_URL:
     raise ValueError("Missing DATABASE_CONNECT_URL")
+
 
 controller.db_connect(configuration.DATABASE_CONNECT_URL)
 
@@ -21,140 +24,118 @@ def receive_new_paper(paper_data):
     Adiciona as recomendações e outros relacionamentos
     """
     try:
-        registered_paper = controller.create_paper(**paper_data)
+        print("Receive new paper")
+        response = controller.create_paper(**paper_data)
     except Exception as e:
-        return {
-            "msg": "Unable to register paper",
-            "paper": paper_data,
-            "exception": str(e),
-        }
+        return exceptions.add_exception({
+            "error": "Unable to register paper",
+            "paper": paper_data},
+            e,
+        )
     else:
-        # adiciona links
-        return _find_and_add_related_papers_to_registered_paper(registered_paper)
+        registered_paper = response.get("registered_paper")
+        total_sources = response.get("total sources")
+        if total_sources:
+            # adiciona links
+            print("Find and add linked papers")
+            _find_and_add_linked_papers_lists(registered_paper, total_sources)
+        return {"linked_paper": "created"}
 
 
-def receive_paper(paper_data):
+def update_paper(paper_data):
     """
-    Cria ou atualiza paper
+    Atualiza paper
     Adiciona as recomendações e outros relacionamentos
     """
-    # cria ou atualiza paper
-    result = register_paper(paper_data)
-    registered_paper = result.get('registered_paper')
-
-    if not registered_paper:
-        return result
-    return _find_and_add_related_papers_to_registered_paper(registered_paper)
-
-
-def register_paper(paper_data):
-    """
-    Cria ou atualiza paper
-    """
     try:
-        registered_paper = controller.create_paper(**paper_data)
+        print("Update paper")
+        registered_paper = controller.get_paper_by_pid(paper_data['pid'])
+        response = controller.update_paper(registered_paper, **paper_data)
     except Exception as e:
-        try:
-            registered_paper = controller.get_paper_by_pid(paper_data['pid'])
-        except Exception as e:
-            return {
-                "msg": "Unable to get registered paper",
-                "paper": paper_data,
-                "exception": str(e),
-            }
-        else:
-            registered_paper = controller.update_paper(
-                registered_paper, **paper_data)
-    return {"registered_paper": registered_paper}
+        return exceptions.add_exception({
+            "error": "Unable to get registered paper",
+            "paper": paper_data,
+            },
+            e,
+        )
+    else:
+        registered_paper = response.get("registered_paper")
+        total_sources = response.get("total sources")
+        if total_sources:
+            # adiciona links
+            print("Find and add linked papers")
+            _find_and_add_linked_papers_lists(registered_paper, total_sources)
+        return {"linked_paper": "updated"}
 
 
 def search_papers(text, subject_area, from_year, to_year):
-    words = text.split()
-    selected_ids = set()
-    for word in words:
-        _ids = papers_selection.select_papers_by_metadata(
-            word, subject_area,
-            from_year, to_year,
-        )
-        selected_ids |= set(_ids)
-    if not selected_ids:
-        data = dict(
-            text=text,
-            subject_area=subject_area,
-            from_year=from_year,
-            to_year=to_year,
-        )
-        data = {
-            k: v for k, v in data.items() if v
-        }
-        return {
-            "msg": "Unable to get selected ids for %s" % data
-        }
-    links = recommender.find_paper_links(text, selected_ids)
-
+    parameters = papers_selection.select_papers_by_text(
+        text, subject_area, from_year, to_year)
+    links = recommender.compare_papers(
+        text, parameters['ids'], parameters['texts']
+    )
     items = []
     for item in links.get("recommended") or []:
         paper = controller.get_paper_by_record_id(item['paper_id'])
-        _item = {}
-        _item.update(paper.as_dict())
-        _item['score'] = item['score']
-        items.append(_item)
+        paper_data = configuration.add_uri(paper.as_dict())
+        paper_data['score'] = item['score']
+        items.append(paper_data)
 
     response = {
         "text": text,
-        "recommended": items,
+        "recommendations": items,
     }
     return response
 
 
-def get_paper_links(pid):
-    return controller.get_paper_links(pid)
+def get_linked_papers_lists(pid):
+    return controller.get_linked_papers_lists(pid)
 
 
-def find_and_update_related_papers_to_registered_paper(pid):
+def find_and_update_linked_papers_lists(pid):
     response = {}
     response['register_paper'] = controller.get_paper_by_pid(pid)
     response.update(
-        _find_and_add_related_papers_to_registered_paper(
-            response['register_paper'])
+        _find_and_add_linked_papers_lists(
+            response['register_paper']
+        )
     )
     return response
 
 
-def _find_and_add_related_papers_to_registered_paper(registered_paper):
+def _find_and_add_linked_papers_lists(registered_paper, total_sources=None):
     if not registered_paper:
         return {
-            "msg": "Unable to get links: missing registered_paper parameter",
+            "error": "Unable to get linked papers: missing registered_paper parameter",
         }
 
     # select ids
-    selected_ids = (
+    parameters = (
         papers_selection.select_papers_which_have_references_in_common(
-            registered_paper
+            registered_paper, total_sources
         )
     )
-    if not selected_ids:
+    if not parameters:
         return {
-            "msg": "Unable to get selected ids for registered paper %s" %
-                   registered_paper._id,
+            "error": "Unable to get selected ids for registered paper %s" %
+            registered_paper._id,
         }
 
-    # find links
-    papers = recommender.find_links_for_registered_paper(
-        registered_paper,
-        selected_ids,
-    )
-    # adiciona links
-    return controller.register_paper_links(
-        registered_paper,
-        papers.get('recommended'),
-        papers.get('rejected'),
-        papers.get('selected_ids'),
-    )
+    text = controller.get_text_for_semantic_search(registered_paper)
+    response = tasks.compare_texts_and_register_result.apply_async((
+            registered_paper._id,
+            text,
+            parameters['ids'],
+            parameters['texts'],
+    ))
+    # print(response.get())
 
 
-def display_pretty(response):
-    print(json.dumps(response, indent=2))
+def display_response(response, pretty=True):
+    if pretty:
+        print(json.dumps(response, indent=2))
+    else:
+        print(response)
 
 
 def main():
@@ -219,13 +200,26 @@ def main():
         )
     )
 
-    get_paper_links_parser = subparsers.add_parser(
-        "get_paper_links",
+    get_linked_papers_lists_parser = subparsers.add_parser(
+        "get_linked_papers_lists",
         help=(
             "Get paper links"
         )
     )
-    get_paper_links_parser.add_argument(
+    get_linked_papers_lists_parser.add_argument(
+        "pid",
+        help=(
+            "pid"
+        )
+    )
+
+    find_and_update_linked_papers_lists_parser = subparsers.add_parser(
+        "find_and_update_linked_papers_lists",
+        help=(
+            "Update linked papers lists"
+        )
+    )
+    find_and_update_linked_papers_lists_parser.add_argument(
         "pid",
         help=(
             "pid"
@@ -238,17 +232,21 @@ def main():
         if args.action == "new":
             response = receive_new_paper(paper_data)
         else:
-            response = receive_paper(paper_data)
-        display_pretty(response)
+            response = update_paper(paper_data)
+        display_response(response, pretty=False)
 
     elif args.command == "search_papers":
         response = search_papers(
             args.text, args.subject_area, args.from_year, args.to_year)
-        display_pretty(response)
+        display_response(response, pretty=False)
 
-    elif args.command == "get_paper_links":
-        response = get_paper_links(args.pid)
-        display_pretty(response)
+    elif args.command == "get_linked_papers_lists":
+        response = get_linked_papers_lists(args.pid)
+        display_response(response, pretty=False)
+
+    elif args.command == "find_and_update_linked_papers_lists":
+        response = find_and_update_linked_papers_lists(args.pid)
+        display_response(response, pretty=False)
 
     else:
         parser.print_help()

@@ -14,6 +14,8 @@ from rs import exceptions
 
 def mk_connection(host):
     try:
+        if not host:
+            raise ValueError("Missing host of mongodb")
         _db_connect_by_uri(host)
     except Exception as e:
         raise exceptions.DBConnectError(

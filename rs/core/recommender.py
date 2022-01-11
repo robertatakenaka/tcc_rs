@@ -1,6 +1,5 @@
 from rs.core import (
     semantics,
-    controller,
 )
 from rs import configuration
 
@@ -41,44 +40,3 @@ def compare_papers(text, ids, texts):
         else:
             response['rejected'].append(item)
     return response
-
-
-def find_links_for_registered_paper(registered_paper, selected_ids):
-    if not registered_paper:
-        return {
-            "msg": "Unable to get links for register paper: "
-                   "missing registered_paper parameter"}
-
-    if not selected_ids:
-        return {
-            "msg": "Unable to get links for register paper: "
-                   "missing selected_ids parameter"}
-
-    text = controller.get_text_for_semantic_search(registered_paper)
-    return find_paper_links(text, selected_ids)
-
-
-def find_paper_links(text, selected_ids):
-    if not text:
-        return {
-            "msg": "Unable to discover paper links: "
-                   "missing text parameter"}
-    if not selected_ids:
-        return {
-            "msg": "Unable to discover paper links: "
-                   "missing selected_ids parameter"}
-
-    parameters = {}
-    parameters['text'] = text
-
-    # obtém os textos dos artigos
-    parameters['ids'], parameters['texts'] = (
-        controller.get_texts_for_semantic_search(selected_ids)
-    )
-    try:
-        papers = compare_papers(**parameters)
-    except TypeError:
-        papers = {}
-
-    papers['selected_ids'] = selected_ids
-    return papers

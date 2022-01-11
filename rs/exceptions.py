@@ -1,3 +1,9 @@
+def add_exception(response, exception):
+    response['exception'] = str(type(exception))
+    response['exception_msg'] = str(exception)
+    return response
+
+
 # class MissingPidV3Error(Exception):
 #     ...
 
