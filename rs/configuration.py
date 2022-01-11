@@ -1,8 +1,7 @@
 import os
 
 
-MODELS_PATH = os.getenv('MODELS_PATH', default = "/path")
-
+MODELS_PATH = os.getenv('MODELS_PATH', default="st_models")
 
 MODELS = [
     'stsb-xlm-r-multilingual',
@@ -13,10 +12,20 @@ MODELS = [
     'paraphrase-multilingual-MiniLM-L12-v2',
     'paraphrase-multilingual-mpnet-base-v2',
 ]
-DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', default = 'stsb-xlm-r-multilingual')
+DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', default='stsb-xlm-r-multilingual')
 
 
 # mongodb://my_user:my_password@127.0.0.1:27017/my_db
 DATABASE_CONNECT_URL = os.environ.get("DATABASE_CONNECT_URL")
 MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES") or 20)
 MIN_SCORE = float(os.environ.get("MIN_SCORE") or 0.7)
+
+COLLECTION_WEBSITE_URL_PATTERN = os.environ.get(
+    "COLLECTION_WEBSITE_URL_PATTERN",
+    default="{url}/documents/{id}"
+)
+
+
+def get_document_uri(**kwargs):
+    return COLLECTION_WEBSITE_URL_PATTERN.format(**kwargs)
+

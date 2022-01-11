@@ -1,0 +1,16 @@
+{
+	"pid": "9875678900987667890992",
+	"network_collection": "scl",
+	"pub_year": "2016",
+	"doi": "1920453",
+    "main_lang": "es",
+	"subject_areas": ["Health Sciences"],
+	"paper_titles": [],
+	"keywords": [],
+	"abstracts": [
+		{"lang": "en", "text": "Anything but the same xxx"}
+	],
+	"references": [
+		{"pub_year": "1900", "surname": "Smith", "journal": "Journal"}
+	]
+}

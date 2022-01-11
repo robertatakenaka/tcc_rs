@@ -21,6 +21,22 @@ def utcnow():
     return datetime.utcnow() #.isoformat().replace("T", " ") + "Z"
 
 
+def paper_summary(obj):
+    data = {
+        "uri_params": {
+            "pid": obj.pid,
+            "collection_id": obj.network_collection,
+        },
+        "pub_year": obj.pub_year,
+        "doi_with_lang": [item.as_dict() for item in obj.doi_with_lang],
+        "paper_titles": [item.as_dict() for item in obj.paper_titles],
+        "abstracts": [item.as_dict() for item in obj.abstracts],
+    }
+    if hasattr(obj, 'score') and obj.score:
+        data['score'] = float(obj.score)
+    return data
+
+
 class TextAndLang(EmbeddedDocument):
     lang = StringField()
     text = StringField()
@@ -142,14 +158,7 @@ class Recommendation(EmbeddedDocument):
     score = DecimalField()
 
     def as_dict(self):
-        return {
-            "pid": self.pid,
-            "network_collection": self.network_collection,
-            "pub_year": self.pub_year,
-            "doi_with_lang": self.doi_with_lang,
-            "paper_titles": self.paper_titles,
-            "abstracts": self.abstracts,
-        }
+        return paper_summary(self)
 
     def __str__(self):
         return self.to_json()
@@ -310,7 +319,7 @@ class Paper(Document):
     pub_year = StringField()
 
     doi_with_lang = EmbeddedDocumentListField(DOI)
-    
+
     subject_areas = ListField(StringField())
     paper_titles = EmbeddedDocumentListField(TextAndLang)
     abstracts = EmbeddedDocumentListField(TextAndLang)
@@ -322,6 +331,7 @@ class Paper(Document):
     linked_by_refs = EmbeddedDocumentListField(Recommendation)
 
     recommendable = StringField()
+    text_s = StringField()
 
     # datas deste registro
     created = DateTimeField()
@@ -336,11 +346,55 @@ class Paper(Document):
             'pub_year',
             'recommendations',
             'network_collection',
-            '$paper_titles__text',
-            '$abstracts__text',
-            '$keywords__text',
+            {'fields': ['$text_s', ],
+             'default_language': 'english',
+             'weights': {'text_s': 10, }
+            }
         ]
     }
+
+    def clear(self):
+        self.network_collection = None
+        self.pub_year = None
+        self.doi_with_lang = []
+        self.subject_areas = []
+        self.paper_titles = []
+        self.abstracts = []
+        self.keywords = []
+        self.references = []
+        self.recommendations = []
+        self.rejections = []
+        self.linked_by_refs = []
+
+    def as_dict(self):
+        data = {"_id": self._id}
+        data.update(paper_summary(self))
+        return data
+
+    @property
+    def document_uri_parameters(self):
+        try:
+            url = CollectionWebsite.objects(acron=self.network_collection)[0].url
+        except Exception as e:
+            url = ""
+        return {"url": url, "id": self.pid}
+
+    @property
+    def links(self):
+        response = {}
+        items = []
+        for item in self.recommendations:
+            items.append(item.as_dict())
+        response['recommendations'] = items
+        items = []
+        for item in self.rejections:
+            items.append(item.as_dict())
+        response['rejections'] = items
+        items = []
+        for item in self.linked_by_refs:
+            items.append(item.as_dict())
+        response['linked_by_refs'] = items
+        return response
 
     @property
     def _id(self):
@@ -390,7 +444,7 @@ class Paper(Document):
         if not all([lang, value]):
             return
         item = DOI()
-        item.type = type
+        item.lang = lang
         item.value = value
         item.creation_status = creation_status
         item.registration_status = registration_status
@@ -502,15 +556,14 @@ class Paper(Document):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
-
+        self.text_s = " ".join([item.text for item in self.abstracts])
+        print(self.text_s)
         return super(Paper, self).save(*args, **kwargs)
 
 
 class Journal(Document):
     pid = StringField(max_length=9, unique=True, required=True)
-    
     subject_areas = ListField(StringField())
-    
     # datas deste registro
     created = DateTimeField()
     updated = DateTimeField()
@@ -536,3 +589,37 @@ class Journal(Document):
         self.updated = utcnow()
 
         return super(Journal, self).save(*args, **kwargs)
+
+
+class CollectionWebsite(Document):
+    acron = StringField(required=True)
+    names = EmbeddedDocumentListField(TextAndLang)
+    url = StringField(required=True)
+    # datas deste registro
+    created = DateTimeField()
+    updated = DateTimeField()
+
+    meta = {
+        'collection': 'rs_collection_ws',
+        'indexes': [
+            'acron',
+            'names',
+        ]
+    }
+
+    def add_name(self, lang, text):
+        if not self.names:
+            self.names = []
+        if not all([lang, text]):
+            return
+        item = TextAndLang()
+        item.lang = lang
+        item.text = text
+        self.names.append(item)
+
+    def save(self, *args, **kwargs):
+        if not self.created:
+            self.created = utcnow()
+        self.updated = utcnow()
+
+        return super(CollectionWebsite, self).save(*args, **kwargs)

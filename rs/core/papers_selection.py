@@ -35,6 +35,7 @@ def select_papers_by_metadata(
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(paper.referenced_by)
-        ids != set(paper._id)
-    return ids
+        ids |= set(select_papers_which_have_references_in_common(paper))
+        ids |= set([paper._id])
+
+    return list(ids)

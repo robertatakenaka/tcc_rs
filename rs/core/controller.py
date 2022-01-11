@@ -1,7 +1,5 @@
 import logging
 
-from mongoengine import errors
-
 from rs import exceptions
 from rs.db import (
     db,
@@ -27,6 +25,10 @@ def get_subject_areas(journal_issn):
         return
     else:
         return journal.subject_areas
+
+
+def get_paper_by_pid(pid):
+    return db.get_records(Paper, **{'pid': pid})[0]
 
 
 def get_paper_by_record_id(_id):
@@ -99,6 +101,12 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
                   keywords,
                   references,
                   ):
+    main_lang = (
+        main_lang or
+        (paper_titles and paper_titles[0]['lang']) or
+        (abstracts and abstracts[0]['lang'])
+    )
+    paper.clear()
     paper.network_collection = network_collection
     paper.pid = pid
     paper.pub_year = pub_year
@@ -141,6 +149,37 @@ def add_references_to_paper(paper, references):
     total = len(references)
 
     for ref in references:
+        for k in (
+                "pub_year",
+                "vol",
+                "num",
+                "suppl",
+                "page",
+                "surname",
+                "organization_author",
+                "doi",
+                "journal",
+                "paper_title",
+                "source",
+                "issn",
+                "thesis_date",
+                "thesis_loc",
+                "thesis_country",
+                "thesis_degree",
+                "thesis_org",
+                "conf_date",
+                "conf_loc",
+                "conf_country",
+                "conf_name",
+                "conf_org",
+                "publisher_loc",
+                "publisher_country",
+                "publisher_name",
+                "edition",
+                "source_person_author_surname",
+                "source_organization_author",
+            ):
+            ref[k] = ref.get(k) or None
         try:
             registered_ref = paper.add_reference(**ref)
         except TypeError as e:
@@ -313,7 +352,10 @@ def register_recommendations(registered_paper, recommendations):
             recommended.paper_titles, recommended.abstracts,
             recommendation['score'],
         )
-    registered_paper.save()
+    response = []
+    for item in registered_paper.recommendations:
+        response.append(item.as_dict())
+    return response
 
 
 def register_rejections(registered_paper, rejections):
@@ -327,7 +369,10 @@ def register_rejections(registered_paper, rejections):
             rejected.paper_titles, rejected.abstracts,
             rejection['score'],
         )
-    registered_paper.save()
+    response = []
+    for item in registered_paper.rejections:
+        response.append(item.as_dict())
+    return response
 
 
 def register_linked_by_refs(registered_paper, related_papers_ids):
@@ -342,7 +387,10 @@ def register_linked_by_refs(registered_paper, related_papers_ids):
             related.pub_year, related.doi_with_lang,
             related.paper_titles, related.abstracts,
         )
-    registered_paper.save()
+    response = []
+    for item in registered_paper.linked_by_refs:
+        response.append(item.as_dict())
+    return response
 
 
 def register_paper_links(registered_paper, recommended, rejected, linked_by_refs):
@@ -350,10 +398,26 @@ def register_paper_links(registered_paper, recommended, rejected, linked_by_refs
     Register links
     """
     # registra os resultados na base de dados
+    response = {}
     if recommended:
-        register_recommendations(registered_paper, recommended)
+        response['recommendations'] = (
+            register_recommendations(registered_paper, recommended)
+        )
     if rejected:
-        register_rejections(registered_paper, rejected)
+        response['rejections'] = (
+            register_rejections(registered_paper, rejected)
+        )
     if linked_by_refs:
-        register_linked_by_refs(registered_paper, linked_by_refs)
+        response['linked_by_refs'] = (
+            register_linked_by_refs(registered_paper, linked_by_refs)
+        )
+    registered_paper.save()
+    return response
 
+
+def get_paper_links(pid):
+    data = {}
+    registered_paper = get_paper_by_pid(pid)
+    data['registered_paper'] = registered_paper.as_dict()
+    data.update(registered_paper.links)
+    return data
