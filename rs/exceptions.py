@@ -94,3 +94,6 @@ class DBSaveNotUniqueError(Exception):
 
 # class DocumentIsNotNewError(Exception):
 #     ...
+
+class MissingRegisteredSources(Exception):
+    ...

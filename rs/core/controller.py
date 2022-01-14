@@ -1,7 +1,7 @@
 import logging
 from time import sleep
 
-from rs.core import tasks
+from rs.core import tasks, controller_
 from rs import exceptions
 from rs import configuration
 from rs.db import (
@@ -144,10 +144,14 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
             pass
 
     paper.recommendable = recommendable or 'no'
-    paper = paper.save()
+    paper.save()
 
-    response = {"registered_paper": paper}
+    response = {}
     response.update(add_references_to_paper(paper, references))
+    response["registered_paper"] = paper
+
+    paper.save()
+
     return response
 
 
@@ -190,14 +194,14 @@ def add_references_to_paper(paper, references):
         try:
             registered_ref = paper.add_reference(**ref)
         except TypeError as e:
-            LOGGER.info("not add reference")
-            LOGGER.info(e)
+            print("not add reference")
+            print(e)
             continue
         except Exception as e:
-            LOGGER.info(e)
+            print(e)
         else:
             if paper.recommendable == 'yes' and registered_ref.has_data_enough:
-                LOGGER.info("call tasks.add_referenced_by_to_source")
+                print("call tasks.add_referenced_by_to_source")
                 total_sources += 1
                 tasks.add_referenced_by_to_source.apply_async((ref, paper._id))
 
@@ -208,63 +212,12 @@ def get_source_by_record_id(_id):
     return db.get_record_by__id(Source, _id)
 
 
-def get_papers_ids_linked_by_references(registered_paper, total_sources=None):
-    paper_id = registered_paper._id
-    kwargs = {"referenced_by": paper_id}
-    try:
-        sources = db.get_records(Source, **kwargs)
-        LOGGER.info("Found %i sources" % len(sources))
-        if total_sources and not sources:
-            sleep_s_time = (
-                configuration.WAIT_SOURCES_REGISTRATIONS or total_sources
-            )
-            LOGGER.info("Sleep by %i" % sleep_s_time)
-            LOGGER.info("total_sources=%i" % total_sources)
-            sleep(sleep_s_time)
-            sources = db.get_records(Source, **kwargs)
-            LOGGER.info("total sources=%i" % len(sources))
-
-        ids = set()
-        for source in sources:
-            ids.update(set(source.referenced_by))
-        ids.remove(paper_id)
-        return list(ids)
-    except Exception as e:
-        LOGGER.info(e)
-        return []
-
-
 def get_most_recent_paper_ids(paper_ids):
     items = []
     for _id in paper_ids:
         paper = get_paper_by_record_id(_id)
         items.append((paper.pub_year, _id))
     return [item[1] for item in sorted(items, reverse=True)]
-
-
-def get_text_for_semantic_search(paper):
-    _text = []
-    if not paper:
-        return ""
-    if paper.paper_titles:
-        _text.append(paper.paper_titles[0].text)
-
-    if paper.abstracts:
-        _text.append(paper.abstracts[0].text)
-
-    if _text:
-        return "\n".join(_text)
-
-
-def get_texts_for_semantic_search(paper_ids):
-    selection = []
-    valid_paper_ids = []
-    for _id in paper_ids:
-        text = get_text_for_semantic_search(get_paper_by_record_id(_id))
-        if text:
-            selection.append(text)
-            valid_paper_ids.append(_id)
-    return valid_paper_ids, selection
 
 
 def get_linked_papers_lists(pid):
@@ -277,3 +230,13 @@ def get_linked_papers_lists(pid):
         if r:
             return {k: r}
 
+
+# def get_texts_papers_to_compare(selected_ids):
+#     parameters = {}
+#     if selected_ids:
+#         # obtém os textos dos artigos
+#         parameters['ids'], parameters['texts'] = (
+#             get_texts_for_semantic_search(selected_ids)
+#         )
+#     print("get_texts_papers_to_compare", len(parameters))
+#     return parameters

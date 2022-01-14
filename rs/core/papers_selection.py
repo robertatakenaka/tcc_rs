@@ -1,20 +1,11 @@
 from rs.configuration import ITEMS_PER_PAGE
 from rs.core import (
     controller,
+    controller_,
 )
 
 
-def get_text_papers_to_compare(selected_ids):
-    parameters = {}
-    if selected_ids:
-        # obtém os textos dos artigos
-        parameters['ids'], parameters['texts'] = (
-            controller.get_texts_for_semantic_search(selected_ids)
-        )
-    return parameters
-
-
-def select_papers_which_have_references_in_common(registered_paper, total_sources):
+def select_papers_which_have_references_in_common(registered_paper, total_sources=None):
     """
     Identifica os papers relacionados por terem referências em comum
 
@@ -27,9 +18,9 @@ def select_papers_which_have_references_in_common(registered_paper, total_source
     str dict
 
     """
-    return get_text_papers_to_compare(
-        controller.get_papers_ids_linked_by_references(
-            registered_paper, total_sources)
+    return controller_.get_semantic_search_parameters(
+        controller_.get_papers_ids_linked_by_references(
+            registered_paper._id, total_sources)
     )
 
 
@@ -49,7 +40,7 @@ def _select_papers_by_word(
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(controller.get_papers_ids_linked_by_references(paper))
+        ids |= set(controller_.get_papers_ids_linked_by_references(paper._id))
         ids |= set([paper._id])
 
     return ids
@@ -73,4 +64,4 @@ def select_papers_by_text(
             items_per_page, page, order_by,
         )
         selected_ids |= set(_ids)
-    return get_text_papers_to_compare(list(selected_ids))
+    return controller_.get_semantic_search_parameters(list(selected_ids))

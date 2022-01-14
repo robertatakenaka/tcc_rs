@@ -35,6 +35,7 @@ def receive_new_paper(paper_data):
     else:
         registered_paper = response.get("registered_paper")
         total_sources = response.get("total sources")
+        print("response", response)
         if total_sources:
             # adiciona links
             print("Find and add linked papers")
@@ -59,6 +60,7 @@ def update_paper(paper_data):
             e,
         )
     else:
+        print("response", response)
         registered_paper = response.get("registered_paper")
         total_sources = response.get("total sources")
         if total_sources:
@@ -97,38 +99,19 @@ def find_and_update_linked_papers_lists(pid):
     response['register_paper'] = controller.get_paper_by_pid(pid)
     response.update(
         _find_and_add_linked_papers_lists(
-            response['register_paper']
+            response['register_paper'],
+            len([r
+                 for r in response['register_paper'].references
+                 if r.has_data_enough])
         )
     )
     return response
 
 
 def _find_and_add_linked_papers_lists(registered_paper, total_sources=None):
-    if not registered_paper:
-        return {
-            "error": "Unable to get linked papers: missing registered_paper parameter",
-        }
-
-    # select ids
-    parameters = (
-        papers_selection.select_papers_which_have_references_in_common(
-            registered_paper, total_sources
-        )
-    )
-    if not parameters:
-        return {
-            "error": "Unable to get selected ids for registered paper %s" %
-            registered_paper._id,
-        }
-
-    text = controller.get_text_for_semantic_search(registered_paper)
-    response = tasks.compare_texts_and_register_result.apply_async((
-            registered_paper._id,
-            text,
-            parameters['ids'],
-            parameters['texts'],
-    ))
-    # print(response.get())
+    print("call _find_and_add_linked_papers_lists")
+    return tasks._find_and_add_linked_papers_lists.apply_async((
+        registered_paper._id, total_sources))
 
 
 def display_response(response, pretty=True):

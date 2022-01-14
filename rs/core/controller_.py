@@ -78,6 +78,70 @@ def create_source(
     return _source
 
 
+def get_linked_ref_sources(paper_id):
+    kwargs = {"referenced_by": paper_id}
+    return db.get_records(Source, **kwargs)
+
+
+def get_linked_by_refs__papers_ids(sources, paper_id):
+    ids = set()
+    for source in sources:
+        ids.update(set(source.referenced_by))
+    if paper_id in ids:
+        ids.remove(paper_id)
+    return list(ids)
+
+
+def get_papers_ids_linked_by_references(paper_id, total_sources=None):
+    sources = get_linked_ref_sources(paper_id)
+    print("Found %i sources / %i" % (len(sources), total_sources))
+    return get_linked_by_refs__papers_ids(sources, paper_id)
+
+
+def get_semantic_search_parameters(selected_ids, paper_id=None):
+    parameters = {}
+    if selected_ids:
+        # obtém os textos dos artigos
+        parameters['ids'], parameters['texts'] = (
+            get_texts_for_semantic_search(selected_ids)
+        )
+
+        if paper_id:
+            ign, text = (
+                get_texts_for_semantic_search([paper_id])
+            )
+            parameters['text'] = text[0]
+    print("get_semantic_search_parameters", len(parameters))
+    return parameters
+
+
+def get_text_for_semantic_search(paper):
+    _text = []
+    if not paper:
+        return ""
+    if paper.paper_titles:
+        _text.append(paper.paper_titles[0].text)
+
+    if paper.abstracts:
+        _text.append(paper.abstracts[0].text)
+
+    if _text:
+        return "\n".join(_text)
+
+
+def get_texts_for_semantic_search(paper_ids):
+    selection = []
+    valid_paper_ids = []
+    for _id in paper_ids:
+        print("get_texts_for_semantic_search", _id)
+        text = get_text_for_semantic_search(get_paper_by_record_id(_id))
+        if text:
+            selection.append(text)
+            valid_paper_ids.append(_id)
+    print("valid selected_ids", len(valid_paper_ids))
+    return valid_paper_ids, selection
+
+
 def get_paper_by_record_id(_id):
     try:
         return db.get_record_by__id(Paper, _id)
