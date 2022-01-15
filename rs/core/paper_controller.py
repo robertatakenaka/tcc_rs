@@ -1,16 +1,10 @@
-import logging
-
-from rs.core import tasks
-from rs import exceptions
-from rs import configuration
 from rs.db import (
     db,
 )
 from rs.db.data_models import (
     Paper,
-    Source,
-    Journal,
     PROC_STATUS_NA,
+    PROC_STATUS_SOURCE_REGISTERED,
 )
 from rs.utils import response_utils
 
@@ -64,8 +58,8 @@ REFERENCE_ATTRIBUTES = (
 #         return journal.subject_areas
 
 
-# def get_paper_by_pid(pid):
-#     return db.get_records(Paper, **{'pid': pid})[0]
+def get_paper_by_pid(pid):
+    return db.get_records(Paper, **{'pid': pid})[0]
 
 
 # def get_paper_by_record_id(_id):
@@ -101,34 +95,52 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  keywords,
                  references,
                  ):
+    response = response_utils.create_response("create_paper")
     paper = Paper()
-    return _update_paper(
-        paper,
-        network_collection, pid, main_lang, doi, pub_year,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references,
-    )
+    try:
+        registered_paper = _update_paper(
+            paper,
+            network_collection, pid, main_lang, doi, pub_year,
+            subject_areas,
+            paper_titles,
+            abstracts,
+            keywords,
+            references,
+        )
+        response['registered_paper'] = registered_paper._id
+    except Exception as e:
+        # mongoengine.errors.NotUniqueError
+        # FIXME error code depende da excecao
+        response_utils.add_error(response, "Unable to create paper", 400)
+        response_utils.add_exception(response, e)
+    return response
 
 
-def update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+def update_paper(network_collection, pid, main_lang, doi, pub_year,
                  subject_areas,
                  paper_titles,
                  abstracts,
                  keywords,
                  references,
                  ):
-    return _update_paper(
-        paper,
-        network_collection, pid, main_lang, doi, pub_year,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references,
-    )
+    response = response_utils.create_response("update_paper")
+    try:
+        registered_paper = get_paper_by_pid(pid)
+        registered_paper = _update_paper(
+            registered_paper,
+            network_collection, pid, main_lang, doi, pub_year,
+            subject_areas,
+            paper_titles,
+            abstracts,
+            keywords,
+            references,
+        )
+        response['registered_paper'] = registered_paper._id
+    except Exception as e:
+        # FIXME error code depende da excecao
+        response_utils.add_error(response, "Unable to update paper", 400)
+        response_utils.add_exception(response, e)
+    return response
 
 
 def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
@@ -177,87 +189,20 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
 
     paper.save()
 
-    response = {}
-    response.update(add_references_to_paper(paper, references))
-    response["registered_paper"] = paper
-
-    paper.save()
-    print(response)
-    return response
-
-
-def add_references_to_paper(paper, references):
-    total = len(references)
-    total_sources = 0
-    res = []
     for ref in references:
-        ret = add_reference(paper, ref)
-        if ret.get("info") == "source created/updated":
-            total_sources += 1
-        res.append(ret)
-    if not total_sources:
+        _add_reference(paper, ref)
+
+    if paper.proc_status != PROC_STATUS_SOURCE_REGISTERED:
         paper.proc_status = PROC_STATUS_NA
-    return {
-        "total references": total, "total sources": total_sources,
-        "results": res,
-    }
+    paper.save()
+
+    return paper
 
 
-def add_reference(paper, ref):
+def _add_reference(paper, ref):
     for k in REFERENCE_ATTRIBUTES:
         ref[k] = ref.get(k) or None
-    try:
-        registered_ref = paper.add_reference(**ref)
-    except TypeError as e:
-        return {
-            "error": "Unable to register paper reference %s" % ref,
-            "exception": str(type(e)),
-            "exception_msg": str(e),
-        }
-    except Exception as e:
-        return {
-            "error": "Unable to register paper reference %s" % ref,
-            "exception": str(type(e)),
-            "exception_msg": str(e),
-        }
-    else:
-        result = {
-            "info": "added reference",
-        }
-        if paper.recommendable == 'yes' and registered_ref.has_data_enough:
-            tasks.add_referenced_by_to_source(ref, paper)
-            result['info'] = "source created/updated"
-        return result
-
-# def get_source_by_record_id(_id):
-#     return db.get_record_by__id(Source, _id)
-
-
-# def get_most_recent_paper_ids(paper_ids):
-#     items = []
-#     for _id in paper_ids:
-#         paper = get_paper_by_record_id(_id)
-#         items.append((paper.pub_year, _id))
-#     return [item[1] for item in sorted(items, reverse=True)]
-
-
-# def get_linked_papers_lists(pid):
-#     registered_paper = get_paper_by_pid(pid)
-#     lists = registered_paper.get_linked_papers_lists(
-#         add_uri=configuration.add_uri,
-#     )
-#     for k in ("recommendations", "rejections", "linked_by_refs"):
-#         r = lists.get(k)
-#         if r:
-#             return {k: r}
-
-
-# # def get_texts_papers_to_compare(selected_ids):
-# #     parameters = {}
-# #     if selected_ids:
-# #         # obtém os textos dos artigos
-# #         parameters['ids'], parameters['texts'] = (
-# #             get_texts_for_semantic_search(selected_ids)
-# #         )
-# #     print("get_texts_papers_to_compare", len(parameters))
-# #     return parameters
+    registered_ref = paper.add_reference(**ref)
+    if paper.has_text == 'yes' and registered_ref.has_data_enough:
+        paper.proc_status = PROC_STATUS_SOURCE_REGISTERED
+        print(PROC_STATUS_SOURCE_REGISTERED)

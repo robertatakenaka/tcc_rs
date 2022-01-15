@@ -9,9 +9,10 @@ from rs.db import (
 )
 from rs.db.data_models import (
     Paper,
-    Source,
     Journal,
     PROC_STATUS_NA,
+    PROC_STATUS_SOURCE_REGISTERED,
+    PROC_STATUS_TODO,
 )
 
 
@@ -70,169 +71,123 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
-                 ignore_result=False,
+                 create_sources,
+                 create_links,
                  ):
 
-    module = tasks
-    result_create_paper = module.create_paper(
+    get_result = create_sources
+    response = response_utils.create_response("create_paper")
+
+    # registra o novo documento
+    result_create_paper = tasks.create_paper(
             network_collection, pid, main_lang, doi, pub_year,
             subject_areas,
             paper_titles,
             abstracts,
             keywords,
             references,
-            ignore_result,
-    )
-    registered_paper = result_create_paper['registered_paper']
-    result_register_refs_sources = module.register_refs_sources(
-            registered_paper.references,
-    )
+            get_result,
+        )
+    response.update(result_create_paper)
+
+    paper_id = response.get("registered_paper")
+
+    if not create_sources or not paper_id:
+        # finaliza se a opção create_sources == False ou
+        # se houve erro ao registrar
+        return response
+
+    # obtém os dados do documento registrado
+    paper = get_paper_by_record_id(paper_id)
+
+    # cria ou atualiza os registros de sources usando os dados das referências
+    result = register_refs_sources(paper)
+    response.update(result or {})
+
+    if not create_links or paper.proc_status == PROC_STATUS_NA:
+        # finaliza se a opção create_links == False ou
+        # se paper não tem dados para processar a similaridade
+        return response
+
+    result = tasks.find_and_add_linked_papers_lists(paper_id)
+    response.update(result or {})
+    return response
 
 
-def update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+def update_paper(network_collection, pid, main_lang, doi, pub_year,
                  subject_areas,
                  paper_titles,
                  abstracts,
                  keywords,
                  references,
-                 ignore_result=False,
+                 create_sources,
+                 create_links,
                  ):
-    return _update_paper(
-        paper,
-        network_collection, pid, main_lang, doi, pub_year,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references,
-    )
 
+    get_result = create_sources
+    response = response_utils.create_response("update_paper")
 
-def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
-                  subject_areas,
-                  paper_titles,
-                  abstracts,
-                  keywords,
-                  references,
-                  ):
-    main_lang = (
-        main_lang or
-        (paper_titles and paper_titles[0]['lang']) or
-        (abstracts and abstracts[0]['lang'])
-    )
-    paper.clear()
-    paper.network_collection = network_collection
-    paper.pid = pid
-    paper.pub_year = pub_year
+    # registra o novo documento
+    result_update_paper = tasks.update_paper(
+            network_collection, pid, main_lang, doi, pub_year,
+            subject_areas,
+            paper_titles,
+            abstracts,
+            keywords,
+            references,
+            get_result,
+        )
+    response.update(result_update_paper)
 
-    paper.add_doi(main_lang, doi, 'UNK', 'UNK')
+    paper_id = response.get("registered_paper")
 
-    for subject_area in subject_areas:
-        paper.add_subject_area(subject_area)
+    if not create_sources or not paper_id:
+        # finaliza se a opção create_sources == False ou
+        # se houve erro ao registrar
+        return response
 
-    recommendable = None
-    for paper_title in paper_titles:
-        recommendable = 'yes'
-        try:
-            paper.add_paper_title(paper_title['lang'], paper_title['text'])
-        except KeyError:
-            pass
+    # obtém os dados do documento registrado
+    paper = get_paper_by_record_id(paper_id)
 
-    for abstract in abstracts:
-        recommendable = 'yes'
-        try:
-            paper.add_abstract(abstract['lang'], abstract['text'])
-        except KeyError:
-            pass
+    # cria ou atualiza os registros de sources usando os dados das referências
+    result = register_refs_sources(paper)
+    response.update(result or {})
 
-    for keyword in keywords:
-        recommendable = 'yes'
-        try:
-            paper.add_keyword(keyword['lang'], keyword['text'])
-        except KeyError:
-            pass
+    if not create_links or paper.proc_status == PROC_STATUS_NA:
+        # finaliza se a opção create_links == False ou
+        # se paper não tem dados para processar a similaridade
+        return response
 
-    paper.recommendable = recommendable or 'no'
-    paper.save()
-
-    response = {}
-    response.update(add_references_to_paper(paper, references))
-    response["registered_paper"] = paper
-
-    paper.save()
-    print(response)
+    result = tasks.find_and_add_linked_papers_lists(paper_id)
+    response.update(result or {})
     return response
 
 
-def add_references_to_paper(paper, references):
-    total = len(references)
+def register_refs_sources(paper):
+    try:
+        print("register_refs_sources", paper.proc_status)
+        if paper.proc_status == PROC_STATUS_SOURCE_REGISTERED:
+            for ref in paper.references:
+                if ref.has_data_enough:
+                    print("call tasks.add_referenced_by_to_source")
+                    result = tasks.add_referenced_by_to_source(
+                        ref.as_dict, paper._id,
+                        paper.proc_status == PROC_STATUS_SOURCE_REGISTERED)
+                    print(result)
+                    if result == PROC_STATUS_TODO:
+                        paper.proc_status = PROC_STATUS_TODO
+                        paper.save()
 
-    total_sources = 0
-    for ref in references:
-        for k in (
-                "pub_year",
-                "vol",
-                "num",
-                "suppl",
-                "page",
-                "surname",
-                "organization_author",
-                "doi",
-                "journal",
-                "paper_title",
-                "source",
-                "issn",
-                "thesis_date",
-                "thesis_loc",
-                "thesis_country",
-                "thesis_degree",
-                "thesis_org",
-                "conf_date",
-                "conf_loc",
-                "conf_country",
-                "conf_name",
-                "conf_org",
-                "publisher_loc",
-                "publisher_country",
-                "publisher_name",
-                "edition",
-                "source_person_author_surname",
-                "source_organization_author",
-            ):
-            ref[k] = ref.get(k) or None
-        try:
-            registered_ref = paper.add_reference(**ref)
-        except TypeError as e:
-            print("not add reference")
-            print(e)
-            continue
-        except Exception as e:
-            print(e)
-        else:
-            if paper.recommendable == 'yes' and registered_ref.has_data_enough:
-                tasks.add_referenced_by_to_source(ref, paper)
-                total_sources += 1
-
-    if not total_sources:
-        paper.proc_status = PROC_STATUS_NA
-    return {"total references": total, "total sources": total_sources}
+    except Exception as e:
+        response = response_utils.create_response("register_refs_sources")
+        response_utils.add_error(response, "Unable to create/update source", "")
+        response_utils.add_exception(response, e)
+        return response
 
 
-def get_source_by_record_id(_id):
-    return db.get_record_by__id(Source, _id)
-
-
-def get_most_recent_paper_ids(paper_ids):
-    items = []
-    for _id in paper_ids:
-        paper = get_paper_by_record_id(_id)
-        items.append((paper.pub_year, _id))
-    return [item[1] for item in sorted(items, reverse=True)]
-
-
-def find_and_add_linked_papers_lists(registered_paper, ignore_result=False):
-    return tasks.find_and_add_linked_papers_lists(
-        registered_paper, ignore_result)
+def find_and_add_linked_papers_lists(paper_pid):
+    paper = get_paper_by_pid(paper_pid)
+    return tasks.find_and_add_linked_papers_lists(paper._id)
 
 
 def get_linked_papers_lists(pid):
@@ -244,14 +199,3 @@ def get_linked_papers_lists(pid):
         r = lists.get(k)
         if r:
             return {k: r}
-
-
-# def get_texts_papers_to_compare(selected_ids):
-#     parameters = {}
-#     if selected_ids:
-#         # obtém os textos dos artigos
-#         parameters['ids'], parameters['texts'] = (
-#             get_texts_for_semantic_search(selected_ids)
-#         )
-#     print("get_texts_papers_to_compare", len(parameters))
-#     return parameters

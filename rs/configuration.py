@@ -1,6 +1,23 @@
 import os
 
 ##########################################
+
+"""
+https://www.sbert.net/docs/pretrained_models.html#multi-lingual-models
+
+Semantic Similarity
+
+These models find semantically similar sentences within one language or across languages:
+
+    distiluse-base-multilingual-cased-v1: Multilingual knowledge distilled version of multilingual Universal Sentence Encoder. Supports 15 languages: Arabic, Chinese, Dutch, English, French, German, Italian, Korean, Polish, Portuguese, Russian, Spanish, Turkish.
+
+    - distiluse-base-multilingual-cased-v2: Multilingual knowledge distilled version of multilingual Universal Sentence Encoder. This version supports 50+ languages, but performs a bit weaker than the v1 model.
+
+    - paraphrase-multilingual-MiniLM-L12-v2 - Multilingual version of paraphrase-MiniLM-L12-v2, trained on parallel data for 50+ languages.
+
+    - paraphrase-multilingual-mpnet-base-v2 - Multilingual version of paraphrase-mpnet-base-v2, trained on parallel data for 50+ languages.
+"""
+
 MODELS_PATH = os.getenv('MODELS_PATH', default="st_models")
 MODELS = [
     'stsb-xlm-r-multilingual',
@@ -29,6 +46,10 @@ ITEMS_PER_PAGE = int(os.environ.get("ITEMS_PER_PAGE") or 10)
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", 'amqp://guest@0.0.0.0:5672//')
 CELERY_RESULT_BACKEND_URL = os.environ.get("CELERY_RESULT_BACKEND_URL", 'rpc://')
+
+PAPERS_REGISTRATION_QUEUE = os.environ.get("PAPERS_REGISTRATION_QUEUE", 'high_priority')
+SOURCES_REGISTRATION_QUEUE = os.environ.get("SOURCES_REGISTRATION_QUEUE", 'default')
+LINKS_REGISTRATION_QUEUE = os.environ.get("LINKS_REGISTRATION_QUEUE", 'low_priority')
 
 ####################################
 
@@ -62,5 +83,7 @@ def handle_text_s(paper_obj):
     words = set()
     for items in (paper_obj.keywords, paper_obj.paper_titles, paper_obj.abstracts):
         for item in items:
-            words.union(set(item.text.split()))
+            print(item.text)
+            words = words.union(set(item.text.split()))
+    print(words)
     return " ".join(words)

@@ -3,7 +3,7 @@ import argparse
 import json
 import csv
 import os
-
+from datetime import datetime
 from rs import (
     app,
 )
@@ -121,7 +121,7 @@ def read_subject_areas(file_path):
     return journals
 
 
-def register_paper(json_file_path, log_file_path, journals, ignore_result=False):
+def register_paper(json_file_path, log_file_path, journals, create_sources=False ,create_links=False):
     """
     """
     print(json_file_path)
@@ -141,24 +141,28 @@ def register_paper(json_file_path, log_file_path, journals, ignore_result=False)
         paper = convert_paper(data, journals)
     except KeyError:
         return
-    paper['ignore_result'] = ignore_result
+    paper['create_sources'] = create_sources
+    paper['create_links'] = create_links
     return app.receive_new_paper(**paper)
 
 
-def register_papers(list_file_path, log_file_path, journals, ignore_result):
+def register_papers(list_file_path, log_file_path, journals, create_sources, create_links):
     """
     """
+    files_utils.write_file(log_file_path, "", "w")
     with open(list_file_path) as fp:
         for row in fp.readlines():
-            registered = register_paper(row.strip(), log_file_path, journals, ignore_result)
+            registered = register_paper(row.strip(), log_file_path, journals,
+                                        create_sources, create_links)
             if not registered:
                 continue
-            registered['file_path'] = row.strip()
-            if registered.get("registered_paper"):
-                registered['registered_paper'] = registered.get("registered_paper").pid
-            for k in ('recommended', 'rejected', 'selected_ids'):
-                if registered.get(k):
-                    registered[k] = len(registered[k])
+            # registered['file_path'] = row.strip()
+            # if registered.get("registered_paper"):
+            #     registered['registered_paper'] = registered.get("registered_paper").pid
+            # for k in ('recommended', 'rejected', 'selected_ids'):
+            #     if registered.get(k):
+            #         registered[k] = len(registered[k])
+            registered['datetime'] = datetime.now().isoformat()
             content = json.dumps(registered)
             files_utils.write_file(log_file_path, content + "\n", "a")
 
@@ -217,7 +221,15 @@ def main():
         )
     )
     register_papers_parser.add_argument(
-        "--ignore_result",
+        "--create_sources",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "/path/subject_areas.csv"
+        )
+    )
+    register_papers_parser.add_argument(
+        "--create_links",
         action=argparse.BooleanOptionalAction,
         default=False,
         help=(
@@ -232,7 +244,9 @@ def main():
             args.list_file_path,
             args.log_file_path,
             journals,
-            args.ignore_result)
+            args.create_sources,
+            args.create_links,
+        )
     elif args.command == "register_paper":
         journals = read_subject_areas(args.subject_areas_file_path)
         register_paper(

@@ -6,7 +6,7 @@ from rs.core import (
     papers_selection,
     recommender,
 )
-from rs import configuration, exceptions
+from rs import configuration
 from rs.utils import files_utils
 
 
@@ -24,7 +24,9 @@ def receive_new_paper(
         abstracts,
         keywords,
         references,
-        ignore_result=False):
+        create_sources=None,
+        create_links=None
+        ):
     """
     Cria paper
     """
@@ -35,7 +37,8 @@ def receive_new_paper(
         abstracts,
         keywords,
         references,
-        ignore_result,
+        create_sources,
+        create_links,
     )
 
 
@@ -46,7 +49,9 @@ def update_paper(
         abstracts,
         keywords,
         references,
-        ignore_result=False):
+        create_sources=None,
+        create_links=None
+        ):
     """
     Atualiza paper
     """
@@ -57,7 +62,8 @@ def update_paper(
         abstracts,
         keywords,
         references,
-        ignore_result,
+        create_sources,
+        create_links,
     )
 
 
@@ -85,18 +91,11 @@ def get_linked_papers_lists(pid):
     return controller.get_linked_papers_lists(pid)
 
 
-def find_and_update_linked_papers_lists(pid, ignore_result=False):
-    response = {}
-    response['register_paper'] = controller.get_paper_by_pid(pid)
-
-    res = controller.find_and_add_linked_papers_lists(
-            response['register_paper'], ignore_result,
-        )
-    response.update(res)
-    return response
+def find_and_update_linked_papers_lists(pid):
+    return controller.find_and_add_linked_papers_lists(pid)
 
 
-def display_response(response, pretty=True):
+def _display_response(response, pretty=True):
     if pretty:
         print(json.dumps(response, indent=2))
     else:
@@ -198,20 +197,20 @@ def main():
             response = receive_new_paper(**paper_data)
         else:
             response = update_paper(**paper_data)
-        display_response(response, pretty=False)
+        _display_response(response, pretty=False)
 
     elif args.command == "search_papers":
         response = search_papers(
             args.text, args.subject_area, args.from_year, args.to_year)
-        display_response(response, pretty=False)
+        _display_response(response, pretty=False)
 
     elif args.command == "get_linked_papers_lists":
         response = get_linked_papers_lists(args.pid)
-        display_response(response, pretty=False)
+        _display_response(response, pretty=False)
 
     elif args.command == "find_and_update_linked_papers_lists":
         response = find_and_update_linked_papers_lists(args.pid)
-        display_response(response, pretty=False)
+        _display_response(response, pretty=False)
 
     else:
         parser.print_help()

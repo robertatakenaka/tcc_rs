@@ -7,24 +7,28 @@ from mongoengine import (
     EmbeddedDocumentListField,
     Document,
     StringField,
-    DictField,
     ListField,
-    DateField,
     DateTimeField,
     DecimalField,
 )
 
+"""
+NA = NOT APPLICABLE - has no text and has no references
+SOURCE_REGISTERED = created source from reference data
+LINKS_TODO = there are references in common / there are possibly similar
+LINKS_DONE = it was possible to find similar documents
+"""
+RS_PROC_STATUS = ("NA", "SOURCE_REGISTERED", "LINKS_TODO", "LINKS_DONE")
 
-RS_PROC_STATUS = ("NA", "TODO", "DOING", "DONE")
 DOI_CREATION_STATUS = ('auto_assigned', 'assigned_by_editor', 'UNK')
 DOI_REGISTRATION_STATUS = ('registered', 'not_registered', 'UNK')
 ISSN_TYPES = ('epub', 'ppub', 'l', 'scielo-id')
 
 
-PROC_STATUS_NA = 'NA'
-PROC_STATUS_TODO = 'TODO'
-PROC_STATUS_DOING = 'DOING'
-PROC_STATUS_DONE = 'DONE'
+PROC_STATUS_NA = RS_PROC_STATUS[0]
+PROC_STATUS_SOURCE_REGISTERED = RS_PROC_STATUS[1]
+PROC_STATUS_TODO = RS_PROC_STATUS[2]
+PROC_STATUS_DONE = RS_PROC_STATUS[3]
 
 
 def utcnow():
@@ -249,6 +253,39 @@ class Reference(EmbeddedDocument):
         if self.source:
             return True
         return False
+
+    @property
+    def as_dict(self):
+        return dict(
+            pub_year=self.pub_year,
+            vol=self.vol,
+            num=self.num,
+            suppl=self.suppl,
+            page=self.page,
+            surname=self.surname,
+            organization_author=self.organization_author,
+            doi=self.doi,
+            journal=self.journal,
+            paper_title=self.paper_title,
+            source=self.source,
+            issn=self.issn,
+            thesis_date=self.thesis_date,
+            thesis_loc=self.thesis_loc,
+            thesis_country=self.thesis_country,
+            thesis_degree=self.thesis_degree,
+            thesis_org=self.thesis_org,
+            conf_date=self.conf_date,
+            conf_loc=self.conf_loc,
+            conf_country=self.conf_country,
+            conf_name=self.conf_name,
+            conf_org=self.conf_org,
+            publisher_loc=self.publisher_loc,
+            publisher_country=self.publisher_country,
+            publisher_name=self.publisher_name,
+            edition=self.edition,
+            source_person_author_surname=self.source_person_author_surname,
+            source_organization_author=self.source_organization_author,
+        )
 
 
 class Source(Document):
@@ -562,7 +599,7 @@ class Paper(Document):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
-        self.text_s = handle_text_s(self)
+        self.text_s = self.text_s or handle_text_s(self)
         return super(Paper, self).save(*args, **kwargs)
 
 

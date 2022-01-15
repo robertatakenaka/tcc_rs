@@ -5,11 +5,8 @@ def create_response(action):
 
 
 def add_result(response, result):
-    try:
-        response.update(result)
-    except TypeError:
-        response['result'] = result
-    return response
+    response['results'] = response.get('results') or []
+    response['results'].append(result)
 
 
 def add_error(response, error_msg, error_code):

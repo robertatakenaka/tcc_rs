@@ -1,11 +1,15 @@
 
+from rs.utils import response_utils
 from rs import exceptions
+from rs.core import recommender
 from rs.db import (
     db,
 )
 from rs.db.data_models import (
     Source,
     Paper,
+    PROC_STATUS_TODO,
+    PROC_STATUS_DONE,
 )
 
 
@@ -83,6 +87,7 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark):
         page = 1
         items_per_page = 100
         order_by = None
+        response = response_utils.create_response("add_referenced_by_to_source")
         sources = search_sources(
             ref['doi'], ref['pub_year'],
             ref['surname'], ref['organization_author'],
@@ -90,26 +95,28 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark):
             items_per_page, page, order_by,
         )
     except exceptions.InsuficientArgumentsToSearchDocumentError as e:
-        print("InsuficientArgumentsToSearchDocumentError")
-        print(e)
-        return {"error": str(e)}
+        response_utils.add_exception(response, e)
+        return response
     try:
         _source = sources[0]
+    except (IndexError, TypeError, ValueError) as e:
+        _source = create_source(**ref)
+        _source.add_referenced_by(paper_id)
+        _source.save()
+        response_utils.add_result(response, "source created")
+        return response
+    else:
         if paper_id not in _source.referenced_by:
             _source.add_referenced_by(paper_id)
             _source.save()
             return todo_mark
 
-        return {"msg": "paper is already referenced in source"}
-
-    except (IndexError, TypeError, ValueError) as e:
-        _source = create_source(**ref)
-        _source.add_referenced_by(paper_id)
-        _source.save()
-        return {"info": "source created"}
+        response_utils.add_result(
+            response, "nothing to do: paper_id was registered in source")
+        return response
 
 
-def get_linked_by_refs__papers_ids(paper_id):
+def _get_linked_by_refs__papers_ids(paper_id):
     kwargs = {"referenced_by": paper_id}
     ids = set()
     for source in db.get_records(Source, **kwargs):
@@ -120,7 +127,7 @@ def get_linked_by_refs__papers_ids(paper_id):
     return list(ids)
 
 
-def get_semantic_search_parameters(selected_ids, paper_id=None):
+def _get_semantic_search_parameters(selected_ids, paper_id=None):
     parameters = {}
     if selected_ids:
         # obtém os textos dos artigos
@@ -172,7 +179,7 @@ def get_paper_by_record_id(_id):
         print("???????")
 
 
-def register_linked_papers(paper_id, recommended, rejected, ids):
+def _register_linked_papers(paper_id, recommended, rejected, ids):
     """
     Register links
     """
@@ -190,6 +197,43 @@ def register_linked_papers(paper_id, recommended, rejected, ids):
     for item in ids:
         registered_paper.add_linked_paper(
             'linked_by_refs', item)
-
+    registered_paper.proc_status = PROC_STATUS_DONE
     registered_paper.save()
     return registered_paper.get_linked_papers_lists()
+
+
+def find_and_add_linked_papers_lists(paper_id):
+    response = response_utils.create_response("find_and_add_linked_papers_lists")
+    paper = get_paper_by_record_id(paper_id)
+    if paper.proc_status != PROC_STATUS_TODO:
+        response_utils.add_result(
+            response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
+        return response
+
+    ids = _get_linked_by_refs__papers_ids(paper_id)
+    if not ids:
+        response_utils.add_result(response, "There is no `ids` to make links")
+        return response
+
+    parameters = _get_semantic_search_parameters(ids, paper_id)
+    if not parameters:
+        response_utils.add_result(
+            response, "There is no `parameters` to make links")
+        return response
+
+    papers = recommender.compare_papers(**parameters)
+    if not papers:
+        response_utils.add_result(
+            response, "Not found paper links")
+        return response
+
+    papers['ids'] = ids
+    print(papers)
+    result = _register_linked_papers(
+        paper_id,
+        papers.get('recommended'),
+        papers.get('rejected'),
+        papers.get('ids'),
+    )
+    return result
+
