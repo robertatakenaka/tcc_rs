@@ -5,7 +5,6 @@ from rs.core import (
     controller,
     papers_selection,
     recommender,
-    tasks,
 )
 from rs import configuration, exceptions
 from rs.utils import files_utils
@@ -18,56 +17,48 @@ if not configuration.DATABASE_CONNECT_URL:
 controller.db_connect(configuration.DATABASE_CONNECT_URL)
 
 
-def receive_new_paper(paper_data):
+def receive_new_paper(
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+        ignore_result=False):
     """
     Cria paper
-    Adiciona as recomendações e outros relacionamentos
     """
-    try:
-        print("Receive new paper")
-        response = controller.create_paper(**paper_data)
-    except Exception as e:
-        return exceptions.add_exception({
-            "error": "Unable to register paper",
-            "paper": paper_data},
-            e,
-        )
-    else:
-        registered_paper = response.get("registered_paper")
-        total_sources = response.get("total sources")
-        print("response", response)
-        if total_sources:
-            # adiciona links
-            print("Find and add linked papers")
-            _find_and_add_linked_papers_lists(registered_paper, total_sources)
-        return {"linked_paper": "created"}
+    return controller.create_paper(
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+        ignore_result,
+    )
 
 
-def update_paper(paper_data):
+def update_paper(
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+        ignore_result=False):
     """
     Atualiza paper
-    Adiciona as recomendações e outros relacionamentos
     """
-    try:
-        print("Update paper")
-        registered_paper = controller.get_paper_by_pid(paper_data['pid'])
-        response = controller.update_paper(registered_paper, **paper_data)
-    except Exception as e:
-        return exceptions.add_exception({
-            "error": "Unable to get registered paper",
-            "paper": paper_data,
-            },
-            e,
-        )
-    else:
-        print("response", response)
-        registered_paper = response.get("registered_paper")
-        total_sources = response.get("total sources")
-        if total_sources:
-            # adiciona links
-            print("Find and add linked papers")
-            _find_and_add_linked_papers_lists(registered_paper, total_sources)
-        return {"linked_paper": "updated"}
+    return controller.update_paper(
+        network_collection, pid, main_lang, doi, pub_year,
+        subject_areas,
+        paper_titles,
+        abstracts,
+        keywords,
+        references,
+        ignore_result,
+    )
 
 
 def search_papers(text, subject_area, from_year, to_year):
@@ -94,24 +85,15 @@ def get_linked_papers_lists(pid):
     return controller.get_linked_papers_lists(pid)
 
 
-def find_and_update_linked_papers_lists(pid):
+def find_and_update_linked_papers_lists(pid, ignore_result=False):
     response = {}
     response['register_paper'] = controller.get_paper_by_pid(pid)
-    response.update(
-        _find_and_add_linked_papers_lists(
-            response['register_paper'],
-            len([r
-                 for r in response['register_paper'].references
-                 if r.has_data_enough])
+
+    res = controller.find_and_add_linked_papers_lists(
+            response['register_paper'], ignore_result,
         )
-    )
+    response.update(res)
     return response
-
-
-def _find_and_add_linked_papers_lists(registered_paper, total_sources=None):
-    print("call _find_and_add_linked_papers_lists")
-    return tasks._find_and_add_linked_papers_lists.apply_async((
-        registered_paper._id, total_sources))
 
 
 def display_response(response, pretty=True):
@@ -213,9 +195,9 @@ def main():
     if args.command == "receive_paper":
         paper_data = json.loads(files_utils.read_file(args.source_file_path))
         if args.action == "new":
-            response = receive_new_paper(paper_data)
+            response = receive_new_paper(**paper_data)
         else:
-            response = update_paper(paper_data)
+            response = update_paper(**paper_data)
         display_response(response, pretty=False)
 
     elif args.command == "search_papers":

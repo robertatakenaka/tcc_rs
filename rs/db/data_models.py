@@ -14,13 +14,21 @@ from mongoengine import (
     DecimalField,
 )
 
+
+RS_PROC_STATUS = ("NA", "TODO", "DOING", "DONE")
 DOI_CREATION_STATUS = ('auto_assigned', 'assigned_by_editor', 'UNK')
 DOI_REGISTRATION_STATUS = ('registered', 'not_registered', 'UNK')
 ISSN_TYPES = ('epub', 'ppub', 'l', 'scielo-id')
 
 
+PROC_STATUS_NA = 'NA'
+PROC_STATUS_TODO = 'TODO'
+PROC_STATUS_DOING = 'DOING'
+PROC_STATUS_DONE = 'DONE'
+
+
 def utcnow():
-    return datetime.utcnow() #.isoformat().replace("T", " ") + "Z"
+    return datetime.utcnow()
 
 
 def paper_summary(obj):
@@ -273,6 +281,7 @@ class Source(Document):
     source_person_author_surname = StringField()
     source_organization_author = StringField()
     referenced_by = ListField(StringField())
+    ref_type = StringField()
 
     # datas deste registro
     created = DateTimeField()
@@ -310,6 +319,7 @@ class Source(Document):
             'source_person_author_surname',
             'source_organization_author',
             'referenced_by',
+            'ref_type',
         ]
     }
 
@@ -321,7 +331,10 @@ class Source(Document):
             self.referenced_by.append(str_paper_id)
 
     @property
-    def ref_type(self):
+    def _id(self):
+        return str(self.id)
+
+    def get_ref_type(self):
         if self.journal:
             return "journal"
         if self.conf_name:
@@ -336,6 +349,7 @@ class Source(Document):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
+        self.ref_type = self.ref_type or self.get_ref_type()
         return super(Source, self).save(*args, **kwargs)
 
 
@@ -357,6 +371,9 @@ class Paper(Document):
     linked_by_refs = EmbeddedDocumentListField(Recommendation)
 
     recommendable = StringField()
+    last_proc = DateTimeField()
+    proc_status = StringField(choice=RS_PROC_STATUS)
+
     text_s = StringField()
 
     # datas deste registro
@@ -372,6 +389,8 @@ class Paper(Document):
             'pub_year',
             'recommendations',
             'network_collection',
+            'recommendable',
+            'proc_status',
             {'fields': ['$text_s', ],
              'default_language': 'english',
              'weights': {'text_s': 10, }
@@ -423,6 +442,7 @@ class Paper(Document):
             items = getattr(self, list_name) or []
             items.append(_create_linked_paper(paper, score))
             setattr(self, list_name, items)
+            self.last_proc = utcnow()
 
     def add_doi(self, lang, value, creation_status, registration_status):
         if not self.doi_with_lang:
@@ -608,3 +628,27 @@ class CollectionWebsite(Document):
         self.updated = utcnow()
 
         return super(CollectionWebsite, self).save(*args, **kwargs)
+
+
+class Hist(Document):
+    pid = StringField()
+    paper_id = StringField()
+    status = StringField(choice=RS_PROC_STATUS)
+    created = DateTimeField()
+    updated = DateTimeField()
+
+    meta = {
+        'collection': 'rs_hist',
+        'indexes': [
+            'paper_id',
+            'pid',
+            'status',
+            'updated',
+        ]
+    }
+
+    def save(self, *args, **kwargs):
+        if not self.created:
+            self.created = utcnow()
+        self.updated = utcnow()
+        return super(Hist, self).save(*args, **kwargs)

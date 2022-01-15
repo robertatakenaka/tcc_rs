@@ -78,24 +78,46 @@ def create_source(
     return _source
 
 
-def get_linked_ref_sources(paper_id):
+def add_referenced_by_to_source(ref, paper_id, todo_mark):
+    try:
+        page = 1
+        items_per_page = 100
+        order_by = None
+        sources = search_sources(
+            ref['doi'], ref['pub_year'],
+            ref['surname'], ref['organization_author'],
+            ref['source'], ref['journal'], ref['vol'],
+            items_per_page, page, order_by,
+        )
+    except exceptions.InsuficientArgumentsToSearchDocumentError as e:
+        print("InsuficientArgumentsToSearchDocumentError")
+        print(e)
+        return {"error": str(e)}
+    try:
+        _source = sources[0]
+        if paper_id not in _source.referenced_by:
+            _source.add_referenced_by(paper_id)
+            _source.save()
+            return todo_mark
+
+        return {"msg": "paper is already referenced in source"}
+
+    except (IndexError, TypeError, ValueError) as e:
+        _source = create_source(**ref)
+        _source.add_referenced_by(paper_id)
+        _source.save()
+        return {"info": "source created"}
+
+
+def get_linked_by_refs__papers_ids(paper_id):
     kwargs = {"referenced_by": paper_id}
-    return db.get_records(Source, **kwargs)
-
-
-def get_linked_by_refs__papers_ids(sources, paper_id):
     ids = set()
-    for source in sources:
+    for source in db.get_records(Source, **kwargs):
         ids.update(set(source.referenced_by))
+        print(ids)
     if paper_id in ids:
         ids.remove(paper_id)
     return list(ids)
-
-
-def get_papers_ids_linked_by_references(paper_id, total_sources=None):
-    sources = get_linked_ref_sources(paper_id)
-    print("Found %i sources / %i" % (len(sources), total_sources))
-    return get_linked_by_refs__papers_ids(sources, paper_id)
 
 
 def get_semantic_search_parameters(selected_ids, paper_id=None):
@@ -119,11 +141,10 @@ def get_text_for_semantic_search(paper):
     _text = []
     if not paper:
         return ""
-    if paper.paper_titles:
-        _text.append(paper.paper_titles[0].text)
 
-    if paper.abstracts:
-        _text.append(paper.abstracts[0].text)
+    for items in (paper.paper_titles, paper.abstracts, paper.keywords):
+        for item in items:
+            _text.append(item.text)
 
     if _text:
         return "\n".join(_text)

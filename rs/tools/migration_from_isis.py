@@ -121,7 +121,7 @@ def read_subject_areas(file_path):
     return journals
 
 
-def register_paper(json_file_path, log_file_path, journals):
+def register_paper(json_file_path, log_file_path, journals, ignore_result=False):
     """
     """
     print(json_file_path)
@@ -141,15 +141,16 @@ def register_paper(json_file_path, log_file_path, journals):
         paper = convert_paper(data, journals)
     except KeyError:
         return
-    return app.receive_new_paper(paper)
+    paper['ignore_result'] = ignore_result
+    return app.receive_new_paper(**paper)
 
 
-def register_papers(list_file_path, log_file_path, journals):
+def register_papers(list_file_path, log_file_path, journals, ignore_result):
     """
     """
     with open(list_file_path) as fp:
         for row in fp.readlines():
-            registered = register_paper(row.strip(), log_file_path, journals)
+            registered = register_paper(row.strip(), log_file_path, journals, ignore_result)
             if not registered:
                 continue
             registered['file_path'] = row.strip()
@@ -215,11 +216,23 @@ def main():
             "/path/subject_areas.csv"
         )
     )
+    register_papers_parser.add_argument(
+        "--ignore_result",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "/path/subject_areas.csv"
+        )
+    )
 
     args = parser.parse_args()
     if args.command == "register_papers":
         journals = read_subject_areas(args.subject_areas_file_path)
-        register_papers(args.list_file_path, args.log_file_path, journals)
+        register_papers(
+            args.list_file_path,
+            args.log_file_path,
+            journals,
+            args.ignore_result)
     elif args.command == "register_paper":
         journals = read_subject_areas(args.subject_areas_file_path)
         register_paper(

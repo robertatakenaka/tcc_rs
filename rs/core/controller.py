@@ -1,7 +1,7 @@
 import logging
-from time import sleep
 
-from rs.core import tasks, controller_
+from rs.utils import response_utils
+from rs.core import tasks
 from rs import exceptions
 from rs import configuration
 from rs.db import (
@@ -11,6 +11,7 @@ from rs.db.data_models import (
     Paper,
     Source,
     Journal,
+    PROC_STATUS_NA,
 )
 
 
@@ -69,16 +70,22 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
+                 ignore_result=False,
                  ):
-    paper = Paper()
-    return _update_paper(
-        paper,
-        network_collection, pid, main_lang, doi, pub_year,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references,
+
+    module = tasks
+    result_create_paper = module.create_paper(
+            network_collection, pid, main_lang, doi, pub_year,
+            subject_areas,
+            paper_titles,
+            abstracts,
+            keywords,
+            references,
+            ignore_result,
+    )
+    registered_paper = result_create_paper['registered_paper']
+    result_register_refs_sources = module.register_refs_sources(
+            registered_paper.references,
     )
 
 
@@ -88,6 +95,7 @@ def update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
+                 ignore_result=False,
                  ):
     return _update_paper(
         paper,
@@ -138,6 +146,7 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
             pass
 
     for keyword in keywords:
+        recommendable = 'yes'
         try:
             paper.add_keyword(keyword['lang'], keyword['text'])
         except KeyError:
@@ -151,7 +160,7 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
     response["registered_paper"] = paper
 
     paper.save()
-
+    print(response)
     return response
 
 
@@ -201,10 +210,11 @@ def add_references_to_paper(paper, references):
             print(e)
         else:
             if paper.recommendable == 'yes' and registered_ref.has_data_enough:
-                print("call tasks.add_referenced_by_to_source")
+                tasks.add_referenced_by_to_source(ref, paper)
                 total_sources += 1
-                tasks.add_referenced_by_to_source.apply_async((ref, paper._id))
 
+    if not total_sources:
+        paper.proc_status = PROC_STATUS_NA
     return {"total references": total, "total sources": total_sources}
 
 
@@ -218,6 +228,11 @@ def get_most_recent_paper_ids(paper_ids):
         paper = get_paper_by_record_id(_id)
         items.append((paper.pub_year, _id))
     return [item[1] for item in sorted(items, reverse=True)]
+
+
+def find_and_add_linked_papers_lists(registered_paper, ignore_result=False):
+    return tasks.find_and_add_linked_papers_lists(
+        registered_paper, ignore_result)
 
 
 def get_linked_papers_lists(pid):
