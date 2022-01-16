@@ -80,10 +80,8 @@ def add_uri(paper_data):
 
 
 def handle_text_s(paper_obj):
-    words = set()
-    for items in (paper_obj.keywords, paper_obj.paper_titles, paper_obj.abstracts):
-        for item in items:
-            print(item.text)
-            words = words.union(set(item.text.split()))
-    print(words)
+    paper_title_words = set([item.text for item in paper_obj.paper_titles])
+    paper_abstract_words = set([item.text for item in paper_obj.paper_abstracts])
+    words = paper_abstract_words & paper_title_words
+    words = words.union(set([item.text for item in paper_obj.keywords]))
     return " ".join(words)
