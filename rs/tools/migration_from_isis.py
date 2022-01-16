@@ -168,7 +168,7 @@ def register_papers(list_file_path, log_file_path, journals, create_sources, cre
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Network pid manager tool")
+    parser = argparse.ArgumentParser(description="Migration tool")
     subparsers = parser.add_subparsers(title="Commands", metavar="", dest="command")
 
     register_paper_parser = subparsers.add_parser(
