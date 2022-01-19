@@ -28,7 +28,7 @@ MODELS = [
     'paraphrase-multilingual-MiniLM-L12-v2',
     'paraphrase-multilingual-mpnet-base-v2',
 ]
-DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', default='stsb-xlm-r-multilingual')
+DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', default='paraphrase-xlm-r-multilingual-v1')
 MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES") or 20)
 MIN_SCORE = float(os.environ.get("MIN_SCORE") or 0.7)
 
@@ -81,7 +81,7 @@ def add_uri(paper_data):
 
 def handle_text_s(paper_obj):
     paper_title_words = set([item.text for item in paper_obj.paper_titles])
-    paper_abstract_words = set([item.text for item in paper_obj.paper_abstracts])
+    paper_abstract_words = set([item.text for item in paper_obj.abstracts])
     words = paper_abstract_words & paper_title_words
     words = words.union(set([item.text for item in paper_obj.keywords]))
     return " ".join(words)

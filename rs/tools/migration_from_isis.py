@@ -169,12 +169,12 @@ def register_papers(list_file_path, log_file_path, journals, create_sources, cre
 
 def _split_list_in_n_lists(items, n=None):
     n = n or 4
-    lists = []
+    lists = [[] for i in range(n)]
     for i, item in enumerate(items):
         index = i % n
         try:
             lists[index].append(item)
-        except IndexError:
+        except (IndexError, AttributeError):
             lists[index] = [item]
     print(f"Created {n} lists")
     print([len(l) for l in lists])
@@ -182,7 +182,7 @@ def _split_list_in_n_lists(items, n=None):
 
 
 def _get_article_json_file_path(folder_path, pid):
-    return os.path.join(folder_path, pid[11:15], pid[1:10], pid)
+    return os.path.join(folder_path, pid[10:14], pid[1:10], pid)
 
 
 def _get_article_json_file_paths(pid_csv_file_path, articles_json_folder_path):
@@ -191,7 +191,7 @@ def _get_article_json_file_paths(pid_csv_file_path, articles_json_folder_path):
     ]
     return [
         _get_article_json_file_path(articles_json_folder_path, pid)
-        for pid in sorted(pids, key=lambda pid: pid[11:15])
+        for pid in sorted(pids, key=lambda pid: pid[10:14])
     ]
 
 
@@ -218,9 +218,10 @@ def _get_register_papers_command(
     outputs_path = os.path.dirname(articles_json_files_list_file_path)
     basename = os.path.splitext(
         os.path.basename(articles_json_files_list_file_path))[0]
+    print(basename)
 
-    output_jsonl_file_path = os.path.join(outputs_path, basename, ".jsonl")
-    nohup_out_file_path = os.path.join(outputs_path, basename, ".out")
+    output_jsonl_file_path = os.path.join(outputs_path, basename+".jsonl")
+    nohup_out_file_path = os.path.join(outputs_path, basename+".out")
 
     # migration_from_isis must be registered as console_scripts entry_points in
     # setup.py

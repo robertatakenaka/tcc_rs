@@ -203,6 +203,6 @@ def _add_reference(paper, ref):
     for k in REFERENCE_ATTRIBUTES:
         ref[k] = ref.get(k) or None
     registered_ref = paper.add_reference(**ref)
-    if paper.has_text == 'yes' and registered_ref.has_data_enough:
+    if paper.recommendable == 'yes' and registered_ref.has_data_enough:
         paper.proc_status = PROC_STATUS_SOURCE_REGISTERED
         print(PROC_STATUS_SOURCE_REGISTERED)
