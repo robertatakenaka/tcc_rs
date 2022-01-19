@@ -167,6 +167,103 @@ def register_papers(list_file_path, log_file_path, journals, create_sources, cre
             files_utils.write_file(log_file_path, content + "\n", "a")
 
 
+def _split_list_in_n_lists(items, n=None):
+    n = n or 4
+    lists = []
+    for i, item in enumerate(items):
+        index = i % n
+        try:
+            lists[index].append(item)
+        except IndexError:
+            lists[index] = [item]
+    print(f"Created {n} lists")
+    print([len(l) for l in lists])
+    return lists
+
+
+def _get_article_json_file_path(folder_path, pid):
+    return os.path.join(folder_path, pid[11:15], pid[1:10], pid)
+
+
+def _get_article_json_file_paths(pid_csv_file_path, articles_json_folder_path):
+    pids = [
+        row['pid'] for row in files_utils.read_csv_file(pid_csv_file_path)
+    ]
+    return [
+        _get_article_json_file_path(articles_json_folder_path, pid)
+        for pid in sorted(pids, key=lambda pid: pid[11:15])
+    ]
+
+
+def _save_lists(lists, folder_path, filename_prefix, total):
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
+
+    # create the a list file for each call
+    files_paths = []
+    for i, list_rows in enumerate(lists):
+        file_path = os.path.join(
+            folder_path,
+            f"{filename_prefix}_{i+1}_{len(list_rows)}_{total}.txt",
+        )
+        files_paths.append(file_path)
+        files_utils.write_file(file_path, "\n".join(list_rows), "w")
+    return files_paths
+
+
+def _get_register_papers_command(
+        articles_json_files_list_file_path,
+        subject_areas_journals_csv_file_path,
+        ):
+    outputs_path = os.path.dirname(articles_json_files_list_file_path)
+    basename = os.path.splitext(
+        os.path.basename(articles_json_files_list_file_path))[0]
+
+    output_jsonl_file_path = os.path.join(outputs_path, basename, ".jsonl")
+    nohup_out_file_path = os.path.join(outputs_path, basename, ".out")
+
+    # migration_from_isis must be registered as console_scripts entry_points in
+    # setup.py
+    return (
+        "nohup migration_from_isis register_papers "
+        f"{articles_json_files_list_file_path} {output_jsonl_file_path} "
+        f"{subject_areas_journals_csv_file_path} "
+        f" --create_sources --create_links>{nohup_out_file_path}&"
+    )
+
+
+def create_register_papers_sh(
+        pid_csv_file_path, articles_json_folder_path,
+        subject_areas_journals_csv_file_path,
+        lists_folder_path, shell_script_path,
+        list_filename_prefix=None,
+        n_calls=None):
+
+    json_file_paths = _get_article_json_file_paths(
+        pid_csv_file_path, articles_json_folder_path,
+    )
+    lists = _split_list_in_n_lists(json_file_paths, n_calls or 4)
+    prefix = (
+        list_filename_prefix or
+        os.path.splitext(os.path.basename(pid_csv_file_path))[0]
+    )
+    input_file_paths = _save_lists(
+        lists, lists_folder_path, prefix, len(json_file_paths),
+    )
+
+    with open(shell_script_path, "w") as fp:
+        for input_file_path in input_file_paths:
+            command = _get_register_papers_command(
+                input_file_path,
+                subject_areas_journals_csv_file_path,
+            )
+            fp.write(f"{command}\n")
+    return {
+        "shell script": shell_script_path,
+        "lists": input_file_paths,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Migration tool")
     subparsers = parser.add_subparsers(title="Commands", metavar="", dest="command")
@@ -237,6 +334,53 @@ def main():
         )
     )
 
+    create_register_papers_sh_parser = subparsers.add_parser(
+        "create_register_papers_sh",
+        help=(
+            "Create shell script to call rs simultaneously"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "pid_csv_file_path",
+        help=(
+            "/path/pid.csv"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "articles_json_folder_path",
+        help=(
+            "Location of JSON files with article data: "
+            "/path/articles_json_folder"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "subject_areas_file_path",
+        help=(
+            "/path/subject_areas.csv"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "lists_folder_path",
+        help=(
+            "/path/lists_folder"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "shell_script_file_path",
+        help=(
+            "Shell script to run/path/run_rs.sh"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
+        "--list_filename_prefix",
+        help=("Prefix for filename that contains the splitted list of pids")
+    )
+    create_register_papers_sh_parser.add_argument(
+        "--simultaneous_calls",
+        default=4,
+        help=("Number of simultaneous call")
+    )
+
     args = parser.parse_args()
     if args.command == "register_papers":
         journals = read_subject_areas(args.subject_areas_file_path)
@@ -254,6 +398,17 @@ def main():
             args.log_file_path,
             journals
         )
+    elif args.command == "create_register_papers_sh":
+        ret = create_register_papers_sh(
+            args.pid_csv_file_path,
+            args.articles_json_folder_path,
+            args.subject_areas_file_path,
+            args.lists_folder_path,
+            args.shell_script_file_path,
+            args.list_filename_prefix,
+            args.simultaneous_calls,
+        )
+        print(ret)
     else:
         parser.print_help()
 

@@ -49,9 +49,10 @@ setuptools.setup(
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         "Operating System :: OS Independent",
     ],
-
-    entry_points="""\
-        [console_scripts]
-            poc=rs.poc.poc:main
-    """,
+	entry_points={
+        "console_scripts":[
+            "migration_from_isis=rs.tools.migration_from_isis:main",
+            "rsapp=rs.app:main",
+        ]
+    },
 )
