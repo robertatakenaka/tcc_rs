@@ -130,19 +130,20 @@ def task_update_paper(
 
 
 ###########################################
-def add_referenced_by_to_source(ref, paper_id, get_result=None):
+def add_referenced_by_to_source(ref, paper_id, pid, year, subject_areas, get_result=None):
     MARK = data_models.PROC_STATUS_TODO
     print("call task_add_referenced_by_to_source", paper_id)
     res = task_add_referenced_by_to_source.apply_async(
-        queue=SOURCES_REGISTRATION_QUEUE, args=(ref, paper_id, MARK)
+        queue=SOURCES_REGISTRATION_QUEUE,
+        args=(ref, paper_id, MARK, pid, year, subject_areas)
     )
     return _handle_result("task add_referenced_by_to_source", res, get_result)
 
 
 @app.task()
-def task_add_referenced_by_to_source(ref, paper_id, MARK):
+def task_add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas):
     print("task_add_referenced_by_to_source")
-    return controller_.add_referenced_by_to_source(ref, paper_id, MARK)
+    return controller_.add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas)
 
 
 ###########################################

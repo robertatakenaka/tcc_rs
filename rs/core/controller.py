@@ -164,25 +164,31 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
 
 
 def register_refs_sources(paper):
-    try:
-        print("register_refs_sources", paper.proc_status)
-        if paper.proc_status == PROC_STATUS_SOURCE_REGISTERED:
-            for ref in paper.references:
-                if ref.has_data_enough:
-                    print("call tasks.add_referenced_by_to_source")
-                    result = tasks.add_referenced_by_to_source(
-                        ref.as_dict, paper._id,
-                        paper.proc_status == PROC_STATUS_SOURCE_REGISTERED)
-                    print(result)
-                    if result == PROC_STATUS_TODO:
-                        paper.proc_status = PROC_STATUS_TODO
-                        paper.save()
+    response = response_utils.create_response("register_refs_sources")
 
-    except Exception as e:
-        response = response_utils.create_response("register_refs_sources")
-        response_utils.add_error(response, "Unable to create/update source", "")
-        response_utils.add_exception(response, e)
+    if not paper.proc_status == PROC_STATUS_SOURCE_REGISTERED:
+        print("register_refs_sources", paper.proc_status)
         return response
+
+    for ref in paper.references:
+        if not ref.has_data_enough:
+            continue
+        try:
+            print("call tasks.add_referenced_by_to_source")
+            result = tasks.add_referenced_by_to_source(
+                ref.as_dict, paper._id,
+                paper.pid, paper.pub_year, paper.subject_areas,
+                paper.proc_status == PROC_STATUS_SOURCE_REGISTERED,
+            )
+            print(result)
+            if result == PROC_STATUS_TODO:
+                paper.proc_status = PROC_STATUS_TODO
+                paper.save()
+
+        except Exception as e:
+            response_utils.add_error(response, "Unable to create/update source", "")
+            response_utils.add_exception(response, e)
+    return response
 
 
 def find_and_add_linked_papers_lists(paper_pid):

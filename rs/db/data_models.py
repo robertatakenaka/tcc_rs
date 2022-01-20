@@ -75,6 +75,20 @@ def _create_linked_paper(paper, score=None):
     return item
 
 
+class RefLink(EmbeddedDocument):
+    pid = StringField()
+    paper_id = StringField()
+    year = StringField()
+    subject_areas = ListField(StringField())
+
+    def as_dict(self):
+        return {"_id": self.paper_id, "pid": self.pid,
+                "year": self.year, "subject_areas": self.subject_areas}
+
+    def __str__(self):
+        return self.to_json()
+
+
 class TextAndLang(EmbeddedDocument):
     lang = StringField()
     text = StringField()
@@ -231,6 +245,7 @@ class Reference(EmbeddedDocument):
     edition = StringField()
     source_person_author_surname = StringField()
     source_organization_author = StringField()
+    source_id = StringField()
 
     @property
     def ref_type(self):
@@ -242,7 +257,7 @@ class Reference(EmbeddedDocument):
             return "thesis"
         if self.source:
             return "book"
-        return "unidentified"
+        return "unknown"
 
     @property
     def has_data_enough(self):
@@ -319,6 +334,7 @@ class Source(Document):
     source_organization_author = StringField()
     referenced_by = ListField(StringField())
     ref_type = StringField()
+    reflinks = EmbeddedDocumentListField(RefLink)
 
     # datas deste registro
     created = DateTimeField()
@@ -367,6 +383,16 @@ class Source(Document):
         if str_paper_id not in self.referenced_by:
             self.referenced_by.append(str_paper_id)
 
+    def add_reflink(self, paper_id, pid, year, subject_areas):
+        if not self.reflinks:
+            self.reflinks = []
+        reflink = RefLink()
+        reflink.paper_id = str(paper_id)
+        reflink.pid = pid
+        reflink.year = year
+        reflink.subject_areas = subject_areas
+        self.reflinks.append(reflink)
+
     @property
     def _id(self):
         return str(self.id)
@@ -380,7 +406,7 @@ class Source(Document):
             return "thesis"
         if self.source:
             return "book"
-        return "unidentified"
+        return "unknown"
 
     def save(self, *args, **kwargs):
         if not self.created:

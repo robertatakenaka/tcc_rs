@@ -82,7 +82,7 @@ def create_source(
     return _source
 
 
-def add_referenced_by_to_source(ref, paper_id, todo_mark):
+def add_referenced_by_to_source(ref, paper_id, todo_mark, pid, year, subject_areas):
     try:
         page = 1
         items_per_page = 100
@@ -102,12 +102,14 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark):
     except (IndexError, TypeError, ValueError) as e:
         _source = create_source(**ref)
         _source.add_referenced_by(paper_id)
+        _source.add_reflink(paper_id, pid, year, subject_areas)
         _source.save()
         response_utils.add_result(response, "source created")
         return response
     else:
         if paper_id not in _source.referenced_by:
             _source.add_referenced_by(paper_id)
+            _source.add_reflink(paper_id, pid, year, subject_areas)
             _source.save()
             return todo_mark
 
