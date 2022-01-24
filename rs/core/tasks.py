@@ -1,7 +1,7 @@
 import logging
 from celery import Celery
 
-from rs.db import data_models
+from rs.db.data_models import PROC_STATUS_TODO
 from rs.utils import response_utils
 from rs.core import papers, connections
 from rs.configuration import (
@@ -142,7 +142,7 @@ def task_update_paper(
 
 ###########################################
 def add_referenced_by_to_source(ref, paper_id, pid, year, subject_areas, get_result=None):
-    MARK = data_models.PROC_STATUS_TODO
+    MARK = PROC_STATUS_TODO
     print("call task_add_referenced_by_to_source", paper_id)
     res = task_add_referenced_by_to_source.apply_async(
         queue=SOURCES_REGISTRATION_QUEUE,

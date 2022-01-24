@@ -1,4 +1,4 @@
-
+from rs.configuration import ITEMS_PER_PAGE, add_uri
 from rs.utils import response_utils
 from rs import exceptions
 from rs.core import recommender
@@ -229,3 +229,91 @@ def find_and_create_connections(paper_id):
     )
     return result
 
+
+##############################################################################
+
+def search_papers(text, subject_area, from_year, to_year):
+    selected_ids = _select_papers_ids_by_text(
+        text, subject_area, from_year, to_year)
+    parameters = _get_semantic_search_parameters(selected_ids)
+
+    papers = recommender.compare_papers(
+        text, parameters['ids'], parameters['texts']
+    )
+    items = []
+    for item in papers['evaluated']:
+        paper = get_paper_by_record_id(item['paper_id'])
+        paper_data = add_uri(paper.as_dict())
+        paper_data['score'] = item['score']
+        items.append(paper_data)
+
+    response = {
+        "text": text,
+        "recommendations": items,
+    }
+    return response
+
+
+def _select_papers_ids_by_text(
+        text, subject_area=None, from_year=None, to_year=None,
+        page=None, items_per_page=None, order_by=None,
+        ):
+    page = page or 1
+    items_per_page = items_per_page or ITEMS_PER_PAGE
+    order_by = order_by or '-pub_year'
+
+    # FIXME
+    words = set(text.split())
+    selected_ids = set()
+    for word in words:
+        _ids = _select_papers_ids_by_word(
+            word, subject_area,
+            from_year, to_year,
+            items_per_page, page, order_by,
+        )
+        selected_ids |= set(_ids)
+    return list(selected_ids)
+
+
+def _select_papers_ids_by_word(
+        text, subject_area,
+        from_year, to_year,
+        page=None, items_per_page=None, order_by=None,
+        ):
+    page = page or 1
+    items_per_page = items_per_page or ITEMS_PER_PAGE
+    order_by = order_by or '-pub_year'
+
+    registered_papers = _search_papers(
+        text, subject_area,
+        from_year, to_year,
+        items_per_page, page, order_by,
+    )
+    ids = set()
+    for paper in registered_papers:
+        ids |= set(_get_connected_by_refs__papers_ids(paper._id))
+        ids |= set([paper._id])
+
+    return ids
+
+
+def _search_papers(text, subject_area,
+                   begin_year, end_year,
+                   items_per_page, page, order_by,
+                   ):
+    if not text:
+        raise exceptions.InsuficientArgumentsToSearchDocumentError(
+            "searcher._search_papers requires text parameter"
+        )
+    values = [subject_area, begin_year, end_year, ]
+    field_names = [
+        'subject_areas',
+        'pub_year__gte',
+        'pub_year__lte',
+    ]
+    kwargs = {
+        k: v
+        for k, v in zip(field_names, values)
+        if v
+    }
+    return Paper.objects(**kwargs).search_text(text).order_by('$text_score')

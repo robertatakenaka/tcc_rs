@@ -25,7 +25,7 @@ def compare_papers(text, ids, texts):
     # reduz a quantidade de candidatos para minimizar problemas de desempenho
     cut = []
     if len(ids) > configuration.MAX_CANDIDATES:
-        cut = [:-configuration.MAX_CANDIDATES]
+        cut = ids[:-configuration.MAX_CANDIDATES]
         ids = ids[-configuration.MAX_CANDIDATES:]
         texts = texts[-configuration.MAX_CANDIDATES:]
         # ids = controller.get_most_recent_paper_ids(ids)[:configuration.MAX_CANDIDATES]

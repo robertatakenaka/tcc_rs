@@ -3,8 +3,6 @@ import json
 
 from rs.core import (
     controller,
-    papers_selection,
-    recommender,
 )
 from rs import configuration
 from rs.utils import files_utils
@@ -74,23 +72,7 @@ def update_paper(
 
 
 def search_papers(text, subject_area, from_year, to_year):
-    parameters = papers_selection.select_papers_by_text(
-        text, subject_area, from_year, to_year)
-    papers = recommender.compare_papers(
-        text, parameters['ids'], parameters['texts']
-    )
-    items = []
-    for item in papers['evaluated']:
-        paper = controller.get_paper_by_record_id(item['paper_id'])
-        paper_data = configuration.add_uri(paper.as_dict())
-        paper_data['score'] = item['score']
-        items.append(paper_data)
-
-    response = {
-        "text": text,
-        "recommendations": items,
-    }
-    return response
+    return controller.search_papers(text, subject_area, from_year, to_year)
 
 
 def get_connected_papers(pid, min_score=None):

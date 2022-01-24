@@ -1,8 +1,8 @@
 import logging
 
 from rs.utils import response_utils
-from rs.core import tasks
-from rs import exceptions
+from rs.core import tasks, connections
+
 from rs.db import (
     db,
 )
@@ -42,26 +42,8 @@ def get_paper_by_record_id(_id):
     return db.get_record_by__id(Paper, _id)
 
 
-def search_papers(text, subject_area,
-                  begin_year, end_year,
-                  items_per_page, page, order_by,
-                  ):
-    if not text:
-        raise exceptions.InsuficientArgumentsToSearchDocumentError(
-            "controller.search_papers requires text parameter"
-        )
-    values = [subject_area, begin_year, end_year, ]
-    field_names = [
-        'subject_areas',
-        'pub_year__gte',
-        'pub_year__lte',
-    ]
-    kwargs = {
-        k: v
-        for k, v in zip(field_names, values)
-        if v
-    }
-    return Paper.objects(**kwargs).search_text(text).order_by('$text_score')
+def search_papers(text, subject_area, from_year, to_year):
+    return connections.search_papers(text, subject_area, from_year, to_year)
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
