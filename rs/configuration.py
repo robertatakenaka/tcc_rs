@@ -66,6 +66,9 @@ RS_PAPER_ID_IS_REQUIRED_TO_UPDATE = bool(os.environ.get("RS_PAPER_ID_IS_REQUIRED
 # True = somente serão registrados documentos que tem abstracts e references 
 ABSTRACTS_AND_REFERENCES_ARE_REQUIRED = bool(os.environ.get("ABSTRACTS_AND_REFERENCES_ARE_REQUIRED") or True)
 
+
+print(f"ABSTRACTS_AND_REFERENCES_ARE_REQUIRED={ABSTRACTS_AND_REFERENCES_ARE_REQUIRED}")
+
 ####################################
 
 

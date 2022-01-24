@@ -135,7 +135,7 @@ def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
                     ):
 
     if configuration.ABSTRACTS_AND_REFERENCES_ARE_REQUIRED:
-        if not abstracts and not references:
+        if not abstracts or not references:
             raise exceptions.RequiredAbstractsAndReferencesError(
                 "Paper registration requires abstracts and references"
             )

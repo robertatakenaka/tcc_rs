@@ -94,6 +94,14 @@ class RefLink(EmbeddedDocument):
         return {"_id": self.paper_id, "pid": self.pid,
                 "year": self.year, "subject_areas": self.subject_areas}
 
+    def as_tuple(self):
+        return (
+            self.year,
+            tuple(sorted(self.subject_areas)),
+            self.pid,
+            self.paper_id
+        )
+
     def __str__(self):
         return self.to_json()
 
@@ -415,6 +423,11 @@ class Source(Document):
         reflink.year = year
         reflink.subject_areas = subject_areas
         self.reflinks.append(reflink)
+
+    def get_reflinks_tuples(self, skip):
+        return set([reflink.as_tuple()
+                    for reflink in self.reflinks
+                    if reflink.paper_id != skip])
 
     @property
     def _id(self):

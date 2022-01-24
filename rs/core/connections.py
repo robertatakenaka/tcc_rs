@@ -1,4 +1,4 @@
-from rs.configuration import ITEMS_PER_PAGE, add_uri
+from rs.configuration import ITEMS_PER_PAGE, add_uri, MAX_CANDIDATES
 from rs.utils import response_utils
 from rs import exceptions
 from rs.core import recommender
@@ -118,11 +118,37 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark, pid, year, subject_are
         return response
 
 
-def _get_connected_by_refs__papers_ids(paper_id):
+def _get_connected_by_refs__papers_ids(paper_id, subject_areas=None,
+                                       from_year=None, to_year=None):
     kwargs = {"referenced_by": paper_id}
+    if not all([subject_areas, from_year, to_year]):
+        ids = set()
+        reflinks = set()
+        for source in db.get_records(Source, **kwargs):
+            ids.update(set(source.referenced_by))
+            reflinks.update(source.get_reflinks_tuples(skip=paper_id))
+        if paper_id in ids:
+            ids.remove(paper_id)
+        if len(ids) < MAX_CANDIDATES:
+            return list(ids)
+        else:
+            return [
+                item[-1]
+                for item in sorted(reflinks, reversed=True)[:MAX_CANDIDATES]
+            ]
+
     ids = set()
     for source in db.get_records(Source, **kwargs):
-        ids.update(set(source.referenced_by))
+        for item in source.get_reflinks_tuples(skip=paper_id):
+            s_year, s_subj_areas, s_pid, s__id = item
+            if subject_areas and (set(subject_areas) & set(s_subj_areas)):
+                if from_year and to_year and from_year <= s_year <= to_year:
+                    ids.add(s__id)
+                elif from_year and from_year <= s_year:
+                    ids.add(s__id)
+                elif to_year and s_year <= to_year:
+                    ids.add(s__id)
+
     if paper_id in ids:
         ids.remove(paper_id)
     return list(ids)
@@ -206,7 +232,8 @@ def find_and_create_connections(paper_id):
             response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
         return response
 
-    ids = _get_connected_by_refs__papers_ids(paper_id)
+    ids = _get_connected_by_refs__papers_ids(
+            paper_id, paper.subject_areas, paper.pub_year)
     if not ids:
         response_utils.add_result(response, "There is no `ids` to make links")
         return response
@@ -291,7 +318,9 @@ def _select_papers_ids_by_word(
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(_get_connected_by_refs__papers_ids(paper._id))
+        ids |= set(_get_connected_by_refs__papers_ids(
+                        paper._id, subject_area,
+                        from_year, to_year))
         ids |= set([paper._id])
 
     return ids
