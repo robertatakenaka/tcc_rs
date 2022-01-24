@@ -186,22 +186,19 @@ def _register_linked_papers(paper_id, recommended, rejected, ids):
     Register links
     """
     registered_paper = get_paper_by_record_id(paper_id)
-    registered_paper.recommendations = []
-    registered_paper.rejections = []
-    registered_paper.linked_by_refs = []
-
+    registered_paper.connections = []
     for item in recommended:
-        registered_paper.add_linked_paper(
-            'recommendations', item['paper_id'], item['score'])
+        registered_paper.add_connection(item['paper_id'], item['score'])
     for item in rejected:
-        registered_paper.add_linked_paper(
-            'rejections', item['paper_id'], item['score'])
+        registered_paper.add_connection(item['paper_id'], item['score'])
     for item in ids:
-        registered_paper.add_linked_paper(
-            'linked_by_refs', item)
-    registered_paper.proc_status = PROC_STATUS_DONE
+        registered_paper.add_connection(item)
+
+    if recommended:
+        registered_paper.proc_status = PROC_STATUS_DONE
+
     registered_paper.save()
-    return registered_paper.get_linked_papers_lists()
+    return registered_paper.get_connections()
 
 
 def find_and_add_linked_papers_lists(paper_id):
