@@ -116,7 +116,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
     return response
 
 
-def update_paper(network_collection, pid, main_lang, doi, pub_year,
+def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  uri,
                  subject_areas,
                  paper_titles,
@@ -132,6 +132,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
 
     # registra o novo documento
     result_update_paper = tasks.update_paper(
+            _id,
             network_collection, pid, main_lang, doi, pub_year,
             uri,
             subject_areas,

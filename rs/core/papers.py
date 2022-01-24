@@ -65,8 +65,8 @@ def get_paper_by_pid(pid):
     return db.get_records(Paper, **{'pid': pid})[0]
 
 
-# def get_paper_by_record_id(_id):
-#     return db.get_record_by__id(Paper, _id)
+def get_paper_by_record_id(_id):
+    return db.get_record_by__id(Paper, _id)
 
 
 # def search_papers(text, subject_area,
@@ -102,7 +102,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
     response = response_utils.create_response("create_paper")
     paper = Paper()
     try:
-        registered_paper = _update_paper(
+        registered_paper = _register_paper(
             paper,
             network_collection, pid, main_lang, doi, pub_year,
             uri,
@@ -121,7 +121,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
     return response
 
 
-def update_paper(network_collection, pid, main_lang, doi, pub_year,
+def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  uri,
                  subject_areas,
                  paper_titles,
@@ -131,8 +131,23 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
                  ):
     response = response_utils.create_response("update_paper")
     try:
-        registered_paper = get_paper_by_pid(pid)
-        registered_paper = _update_paper(
+        if configuration.RS_PAPER_ID_IS_REQUIRED_TO_UPDATE:
+            if not _id:
+                raise exceptions.MissingPaperIdError(
+                    "Expected paper _id provided by Recommender System")
+
+            registered_paper = get_paper_by_record_id(_id)
+        else:
+            if not pid:
+                raise exceptions.MissingPaperIdError(
+                    "Expected paper pid")
+            registered_paper = get_paper_by_pid(pid)
+
+        if not registered_paper:
+            raise exceptions.UpdateDocumentError(
+                "Document which _id=%s is not registered. " % _id)
+
+        registered_paper = _register_paper(
             registered_paper,
             network_collection, pid, main_lang, doi, pub_year,
             uri,
@@ -150,14 +165,14 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
     return response
 
 
-def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
-                  uri,
-                  subject_areas,
-                  paper_titles,
-                  abstracts,
-                  keywords,
-                  references,
-                  ):
+def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+                    uri,
+                    subject_areas,
+                    paper_titles,
+                    abstracts,
+                    keywords,
+                    references,
+                    ):
 
     main_lang = (
         main_lang or

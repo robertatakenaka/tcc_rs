@@ -90,7 +90,7 @@ def task_create_paper(
 
 ###########################################
 
-def update_paper(network_collection, pid, main_lang, doi, pub_year,
+def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  uri,
                  subject_areas,
                  paper_titles,
@@ -103,6 +103,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
     res = task_update_paper.apply_async(
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
+            _id,
             network_collection, pid, main_lang, doi, pub_year,
             uri,
             subject_areas,
@@ -117,6 +118,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
 
 @app.task()
 def task_update_paper(
+        _id,
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
@@ -127,6 +129,7 @@ def task_update_paper(
         ):
     print("task_update_paper")
     return papers.update_paper(
+        _id,
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,

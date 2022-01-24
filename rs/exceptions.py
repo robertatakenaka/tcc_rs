@@ -1,3 +1,9 @@
+class UpdateDocumentError(Exception):
+    ...
+
+
+class MissingPaperIdError(Exception):
+    ...
 
 
 # class MissingPidV3Error(Exception):

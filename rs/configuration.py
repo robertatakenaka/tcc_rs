@@ -58,6 +58,9 @@ COLLECTION_WEBSITE_URL_PATTERN = os.environ.get(
     default="{url}/documents/{id}"
 )
 PAPERS_LOCATION_IS_REQUIRED = bool(os.environ.get("PAPERS_LOCATION_IS_REQUIRED"))
+
+RS_PAPER_ID_IS_REQUIRED_TO_UPDATE = bool(os.environ.get("RS_PAPER_ID_IS_REQUIRED_TO_UPDATE"))
+
 ####################################
 
 

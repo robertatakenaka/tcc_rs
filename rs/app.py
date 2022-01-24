@@ -45,6 +45,7 @@ def receive_new_paper(
 
 
 def update_paper(
+        _id,
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
@@ -59,6 +60,7 @@ def update_paper(
     Atualiza paper
     """
     return controller.update_paper(
+        _id,
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
