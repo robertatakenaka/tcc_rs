@@ -174,6 +174,11 @@ def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
                     references,
                     ):
 
+    if configuration.ABSTRACTS_AND_REFERENCES_ARE_REQUIRED:
+        if not abstracts and not references:
+            raise exceptions.RequiredAbstractsAndReferencesError(
+                "Paper registration requires abstracts and references"
+            )
     main_lang = (
         main_lang or
         (paper_titles and paper_titles[0]['lang']) or
@@ -189,7 +194,7 @@ def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
 
     if configuration.PAPERS_LOCATION_IS_REQUIRED:
         if not paper.uri and not paper.doi:
-            raise exceptions.RequiredPaperDOIorPaperURI(
+            raise exceptions.RequiredPaperDOIorPaperURIError(
                 "Paper registration requires paper DOI or URI"
             )
 

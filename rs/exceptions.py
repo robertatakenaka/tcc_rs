@@ -6,6 +6,14 @@ class MissingPaperIdError(Exception):
     ...
 
 
+class RequiredAbstractsAndReferencesError(Exception):
+    ...
+
+
+class RequiredPaperDOIorPaperURIError(Exception):
+    ...
+
+
 # class MissingPidV3Error(Exception):
 #     ...
 

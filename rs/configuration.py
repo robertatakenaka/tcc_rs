@@ -61,6 +61,11 @@ PAPERS_LOCATION_IS_REQUIRED = bool(os.environ.get("PAPERS_LOCATION_IS_REQUIRED")
 
 RS_PAPER_ID_IS_REQUIRED_TO_UPDATE = bool(os.environ.get("RS_PAPER_ID_IS_REQUIRED_TO_UPDATE"))
 
+# False = documentos serão registrados, no entanto, não serão recomendados
+#             devido à ausência de referências
+# True = somente serão registrados documentos que tem abstracts e references 
+ABSTRACTS_AND_REFERENCES_ARE_REQUIRED = bool(os.environ.get("ABSTRACTS_AND_REFERENCES_ARE_REQUIRED") or True)
+
 ####################################
 
 
