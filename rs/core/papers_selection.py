@@ -1,7 +1,7 @@
 from rs.configuration import ITEMS_PER_PAGE
 from rs.core import (
     controller,
-    controller_,
+    connections,
 )
 
 
@@ -18,8 +18,8 @@ def select_papers_which_have_references_in_common(registered_paper, total_source
     str dict
 
     """
-    return controller_.get_semantic_search_parameters(
-        controller_.get_papers_ids_linked_by_references(
+    return connections.get_semantic_search_parameters(
+        connections.get_papers_ids_linked_by_references(
             registered_paper._id, total_sources)
     )
 
@@ -40,7 +40,7 @@ def _select_papers_by_word(
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(controller_.get_papers_ids_linked_by_references(paper._id))
+        ids |= set(connections.get_papers_ids_linked_by_references(paper._id))
         ids |= set([paper._id])
 
     return ids
@@ -64,4 +64,4 @@ def select_papers_by_text(
             items_per_page, page, order_by,
         )
         selected_ids |= set(_ids)
-    return controller_.get_semantic_search_parameters(list(selected_ids))
+    return connections.get_semantic_search_parameters(list(selected_ids))

@@ -3,7 +3,6 @@ import logging
 from rs.utils import response_utils
 from rs.core import tasks
 from rs import exceptions
-from rs import configuration
 from rs.db import (
     db,
 )
@@ -49,7 +48,7 @@ def search_papers(text, subject_area,
                   ):
     if not text:
         raise exceptions.InsuficientArgumentsToSearchDocumentError(
-            "papers_selection.search_papers requires text parameter"
+            "controller.search_papers requires text parameter"
         )
     values = [subject_area, begin_year, end_year, ]
     field_names = [
@@ -111,7 +110,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
         # se paper não tem dados para processar a similaridade
         return response
 
-    result = tasks.find_and_add_linked_papers_lists(paper_id)
+    result = tasks.find_and_create_connections(paper_id)
     response.update(result or {})
     return response
 
@@ -163,7 +162,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
         # se paper não tem dados para processar a similaridade
         return response
 
-    result = tasks.find_and_add_linked_papers_lists(paper_id)
+    result = tasks.find_and_create_connections(paper_id)
     response.update(result or {})
     return response
 
@@ -196,17 +195,11 @@ def register_refs_sources(paper):
     return response
 
 
-def find_and_add_linked_papers_lists(paper_pid):
+def find_and_create_connections(paper_pid):
     paper = get_paper_by_pid(paper_pid)
-    return tasks.find_and_add_linked_papers_lists(paper._id)
+    return tasks.find_and_create_connections(paper._id)
 
 
-def get_linked_papers_lists(pid):
+def get_connected_papers(pid, min_score=None):
     registered_paper = get_paper_by_pid(pid)
-    lists = registered_paper.get_linked_papers_lists(
-        add_uri=configuration.add_uri,
-    )
-    for k in ("recommendations", "rejections", "linked_by_refs"):
-        r = lists.get(k)
-        if r:
-            return {k: r}
+    return registered_paper.get_connections(min_score)

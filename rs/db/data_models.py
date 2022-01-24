@@ -1,4 +1,5 @@
 from rs.configuration import handle_text_s
+from rs import exceptions
 
 from datetime import datetime
 
@@ -48,6 +49,10 @@ def paper_summary(obj):
     }
     if hasattr(obj, 'score') and obj.score:
         data['score'] = float(obj.score)
+    if hasattr(obj, 'created') and obj.created:
+        data['created'] = obj.created
+    if hasattr(obj, 'updated') and obj.updated:
+        data['updated'] = obj.updated
     return data
 
 
@@ -65,14 +70,15 @@ def _paper_uri_params(paper):
     return {"url": url, "id": paper.pid}
 
 
-def _create_linked_paper(paper, score=None):
-    item = Recommendation()
-    item.pid = paper.pid
-    item.network_collection = paper.network_collection
+def _create_connection(paper, score=None):
+    item = Connection()
+    item._id = paper._id
     item.pub_year = paper.pub_year
+    item.uri = paper.uri
     item.doi_with_lang = paper.doi_with_lang
     item.paper_titles = paper.paper_titles
     item.abstracts = paper.abstracts
+    item.created = utcnow()
     if score:
         item.score = score
     return item
@@ -216,14 +222,15 @@ class RelatedPaper(EmbeddedDocument):
 # )
 
 
-class Recommendation(EmbeddedDocument):
-    pid = StringField()
-    network_collection = StringField()
+class Connection(EmbeddedDocument):
+    _id = StringField()
     pub_year = StringField()
+    uri = EmbeddedDocumentListField(URI)
     doi_with_lang = EmbeddedDocumentListField(DOI)
     paper_titles = EmbeddedDocumentListField(TextAndLang)
     abstracts = EmbeddedDocumentListField(TextAndLang)
     score = DecimalField()
+    created = DateTimeField()
 
     def as_dict(self):
         return paper_summary(self)
@@ -447,12 +454,9 @@ class Paper(Document):
     keywords = EmbeddedDocumentListField(TextAndLang)
     references = EmbeddedDocumentListField(Reference)
 
-    recommendations = EmbeddedDocumentListField(Recommendation)
-    rejections = EmbeddedDocumentListField(Recommendation)
-    linked_by_refs = EmbeddedDocumentListField(Recommendation)
+    connections = EmbeddedDocumentListField(Connection)
 
     recommendable = StringField()
-    last_proc = DateTimeField()
     proc_status = StringField(choice=RS_PROC_STATUS)
 
     text_s = StringField()
@@ -468,7 +472,7 @@ class Paper(Document):
             'pid',
             'doi_with_lang',
             'pub_year',
-            'recommendations',
+            'connections',
             'network_collection',
             'recommendable',
             'proc_status',
@@ -482,15 +486,14 @@ class Paper(Document):
     def clear(self):
         self.network_collection = None
         self.pub_year = None
+        self.uri = []
         self.doi_with_lang = []
         self.subject_areas = []
         self.paper_titles = []
         self.abstracts = []
         self.keywords = []
         self.references = []
-        self.recommendations = []
-        self.rejections = []
-        self.linked_by_refs = []
+        self.connections = []
 
     def as_dict(self):
         data = {"_id": self._id}
@@ -501,29 +504,33 @@ class Paper(Document):
     def _id(self):
         return str(self.id)
 
-    def get_linked_papers_lists(self, list_names=None, add_uri=None):
-        response = {}
-        list_names = list_names or ("recommendations", "rejections", "linked_by_refs")
-        for list_name in list_names:
-            response[list_name] = []
-            for item in getattr(self, list_name):
-                if add_uri:
-                    response[list_name].append(add_uri(item.as_dict()))
-                else:
-                    response[list_name].append(item.as_dict())
-        return response
-
-    def add_linked_paper(self, list_name, linked_paper_id, score=None):
+    @property
+    def last_connection_created(self):
         try:
-            paper = Paper.objects(pk=linked_paper_id)[0]
-        except IndexError as e:
-            print(list_name, linked_paper_id)
-            raise e
-        if hasattr(self, list_name):
-            items = getattr(self, list_name) or []
-            items.append(_create_linked_paper(paper, score))
-            setattr(self, list_name, items)
-            self.last_proc = utcnow()
+            return self.connections[-1].created
+        except IndexError:
+            return None
+
+    def get_connections(self, min_score=None):
+        if min_score:
+            for item in self.connections:
+                if item.score and min_score <= item.score:
+                    yield item.as_dict()
+        else:
+            for item in self.connections:
+                yield item.as_dict()
+
+    def add_connection(self, paper_id_to_connect_to, score=None):
+        try:
+            paper = Paper.objects(pk=paper_id_to_connect_to)[0]
+        except IndexError:
+            raise exceptions.UnableToAddConnectionError(
+                "Unable to create paper connection because paper which "
+                "_id=%s is not registered" % paper_id_to_connect_to
+            )
+        if not self.connections:
+            self.connections = []
+        self.connections.append(_create_connection(paper, score))
 
     def add_uri(self, lang, value):
         if not self.uri:

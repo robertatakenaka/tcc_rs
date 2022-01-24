@@ -118,12 +118,11 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark, pid, year, subject_are
         return response
 
 
-def _get_linked_by_refs__papers_ids(paper_id):
+def _get_connected_by_refs__papers_ids(paper_id):
     kwargs = {"referenced_by": paper_id}
     ids = set()
     for source in db.get_records(Source, **kwargs):
         ids.update(set(source.referenced_by))
-        print(ids)
     if paper_id in ids:
         ids.remove(paper_id)
     return list(ids)
@@ -181,35 +180,33 @@ def get_paper_by_record_id(_id):
         print("???????")
 
 
-def _register_linked_papers(paper_id, recommended, rejected, ids):
+def _register_papers_connections(paper_id, evaluated, ids):
     """
     Register links
     """
     registered_paper = get_paper_by_record_id(paper_id)
     registered_paper.connections = []
-    for item in recommended:
-        registered_paper.add_connection(item['paper_id'], item['score'])
-    for item in rejected:
+    for item in evaluated:
         registered_paper.add_connection(item['paper_id'], item['score'])
     for item in ids:
         registered_paper.add_connection(item)
 
-    if recommended:
+    if evaluated:
         registered_paper.proc_status = PROC_STATUS_DONE
 
     registered_paper.save()
     return registered_paper.get_connections()
 
 
-def find_and_add_linked_papers_lists(paper_id):
-    response = response_utils.create_response("find_and_add_linked_papers_lists")
+def find_and_create_connections(paper_id):
+    response = response_utils.create_response("find_and_create_connections")
     paper = get_paper_by_record_id(paper_id)
     if paper.proc_status != PROC_STATUS_TODO:
         response_utils.add_result(
             response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
         return response
 
-    ids = _get_linked_by_refs__papers_ids(paper_id)
+    ids = _get_connected_by_refs__papers_ids(paper_id)
     if not ids:
         response_utils.add_result(response, "There is no `ids` to make links")
         return response
@@ -222,17 +219,13 @@ def find_and_add_linked_papers_lists(paper_id):
 
     papers = recommender.compare_papers(**parameters)
     if not papers:
-        response_utils.add_result(
-            response, "Not found paper links")
+        response_utils.add_result(response, "Not found paper links")
         return response
 
-    papers['ids'] = ids
-    print(papers)
-    result = _register_linked_papers(
+    result = _register_papers_connections(
         paper_id,
-        papers.get('recommended'),
-        papers.get('rejected'),
-        papers.get('ids'),
+        papers['evaluated'],
+        papers['cut'],
     )
     return result
 

@@ -3,7 +3,7 @@ from celery import Celery
 
 from rs.db import data_models
 from rs.utils import response_utils
-from rs.core import papers, controller_
+from rs.core import papers, connections
 from rs.configuration import (
     DATABASE_CONNECT_URL,
     CELERY_BROKER_URL,
@@ -18,7 +18,7 @@ app = Celery('tasks', backend=CELERY_RESULT_BACKEND_URL, broker=CELERY_BROKER_UR
 
 LOGGER = logging.getLogger(__name__)
 
-controller_._db_connect(DATABASE_CONNECT_URL)
+connections._db_connect(DATABASE_CONNECT_URL)
 
 
 def get_queue(registered_paper):
@@ -154,20 +154,20 @@ def add_referenced_by_to_source(ref, paper_id, pid, year, subject_areas, get_res
 @app.task()
 def task_add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas):
     print("task_add_referenced_by_to_source")
-    return controller_.add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas)
+    return connections.add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas)
 
 
 ###########################################
 
-def find_and_add_linked_papers_lists(paper_id, get_result=None):
-    print("find_and_add_linked_papers_lists", paper_id)
-    res = task_find_and_add_linked_papers_lists.apply_async(
+def find_and_create_connections(paper_id, get_result=None):
+    print("find_and_create_connections", paper_id)
+    res = task_find_and_create_connections.apply_async(
         queue=LINKS_REGISTRATION_QUEUE, args=(paper_id, ))
     return _handle_result(
-        "task find_and_add_linked_papers_lists", res, get_result)
+        "task find_and_create_connections", res, get_result)
 
 
 @app.task()
-def task_find_and_add_linked_papers_lists(paper_id):
-    print("task.task_find_and_add_linked_papers_lists")
-    return controller_.find_and_add_linked_papers_lists(paper_id)
+def task_find_and_create_connections(paper_id):
+    print("task.task_find_and_create_connections")
+    return connections.find_and_create_connections(paper_id)

@@ -14,8 +14,8 @@ class RequiredPaperDOIorPaperURIError(Exception):
     ...
 
 
-# class MissingPidV3Error(Exception):
-#     ...
+class UnableToAddConnectionError(Exception):
+    ...
 
 
 # class DocumentDoesNotExistError(Exception):

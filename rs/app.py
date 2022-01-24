@@ -76,11 +76,11 @@ def update_paper(
 def search_papers(text, subject_area, from_year, to_year):
     parameters = papers_selection.select_papers_by_text(
         text, subject_area, from_year, to_year)
-    links = recommender.compare_papers(
+    papers = recommender.compare_papers(
         text, parameters['ids'], parameters['texts']
     )
     items = []
-    for item in links.get("recommended") or []:
+    for item in papers['evaluated']:
         paper = controller.get_paper_by_record_id(item['paper_id'])
         paper_data = configuration.add_uri(paper.as_dict())
         paper_data['score'] = item['score']
@@ -93,12 +93,12 @@ def search_papers(text, subject_area, from_year, to_year):
     return response
 
 
-def get_linked_papers_lists(pid):
-    return controller.get_linked_papers_lists(pid)
+def get_connected_papers(pid, min_score=None):
+    return controller.get_connected_papers(pid, min_score)
 
 
-def find_and_update_linked_papers_lists(pid):
-    return controller.find_and_add_linked_papers_lists(pid)
+def find_and_create_connections(pid):
+    return controller.find_and_create_connections(pid)
 
 
 def _display_response(response, pretty=True):
@@ -170,26 +170,32 @@ def main():
         )
     )
 
-    get_linked_papers_lists_parser = subparsers.add_parser(
-        "get_linked_papers_lists",
+    get_connected_papers_parser = subparsers.add_parser(
+        "get_connected_papers",
         help=(
             "Get paper links"
         )
     )
-    get_linked_papers_lists_parser.add_argument(
+    get_connected_papers_parser.add_argument(
         "pid",
         help=(
             "pid"
         )
     )
+    get_connected_papers_parser.add_argument(
+        "min_score",
+        help=(
+            "min_score"
+        )
+    )
 
-    find_and_update_linked_papers_lists_parser = subparsers.add_parser(
-        "find_and_update_linked_papers_lists",
+    find_and_create_connections_parser = subparsers.add_parser(
+        "find_and_create_connections",
         help=(
             "Update linked papers lists"
         )
     )
-    find_and_update_linked_papers_lists_parser.add_argument(
+    find_and_create_connections_parser.add_argument(
         "pid",
         help=(
             "pid"
@@ -210,12 +216,12 @@ def main():
             args.text, args.subject_area, args.from_year, args.to_year)
         _display_response(response, pretty=False)
 
-    elif args.command == "get_linked_papers_lists":
-        response = get_linked_papers_lists(args.pid)
+    elif args.command == "get_connected_papers":
+        response = get_connected_papers(args.pid, args.min_score)
         _display_response(response, pretty=False)
 
-    elif args.command == "find_and_update_linked_papers_lists":
-        response = find_and_update_linked_papers_lists(args.pid)
+    elif args.command == "find_and_create_connections":
+        response = find_and_create_connections(args.pid)
         _display_response(response, pretty=False)
 
     else:

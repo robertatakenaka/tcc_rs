@@ -42,24 +42,6 @@ REFERENCE_ATTRIBUTES = (
     "source_organization_author",
 )
 
-# LOGGER = logging.getLogger(__name__)
-
-
-# def db_connect(host):
-#     try:
-#         db.mk_connection(host)
-#     except:
-#         exit()
-
-
-# def get_subject_areas(journal_issn):
-#     try:
-#         journal = Journal.objects(pid=journal_issn)[0]
-#     except:
-#         return
-#     else:
-#         return journal.subject_areas
-
 
 def get_paper_by_pid(pid):
     return db.get_records(Paper, **{'pid': pid})[0]
@@ -67,28 +49,6 @@ def get_paper_by_pid(pid):
 
 def get_paper_by_record_id(_id):
     return db.get_record_by__id(Paper, _id)
-
-
-# def search_papers(text, subject_area,
-#                   begin_year, end_year,
-#                   items_per_page, page, order_by,
-#                   ):
-#     if not text:
-#         raise exceptions.InsuficientArgumentsToSearchDocumentError(
-#             "papers_selection.search_papers requires text parameter"
-#         )
-#     values = [subject_area, begin_year, end_year, ]
-#     field_names = [
-#         'subject_areas',
-#         'pub_year__gte',
-#         'pub_year__lte',
-#     ]
-#     kwargs = {
-#         k: v
-#         for k, v in zip(field_names, values)
-#         if v
-#     }
-#     return Paper.objects(**kwargs).search_text(text).order_by('$text_score')
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
