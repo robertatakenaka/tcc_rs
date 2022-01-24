@@ -3,7 +3,7 @@ from celery import Celery
 
 from rs.db import data_models
 from rs.utils import response_utils
-from rs.core import paper_controller, controller_
+from rs.core import papers, controller_
 from rs.configuration import (
     DATABASE_CONNECT_URL,
     CELERY_BROKER_URL,
@@ -42,6 +42,7 @@ def _handle_result(task_name, result, get_result):
 ###########################################
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -54,6 +55,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,
@@ -67,6 +69,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
 @app.task()
 def task_create_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -74,8 +77,9 @@ def task_create_paper(
         references,
         ):
     print("task_create_paper")
-    return paper_controller.create_paper(
+    return papers.create_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -87,6 +91,7 @@ def task_create_paper(
 ###########################################
 
 def update_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -99,6 +104,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,
@@ -112,6 +118,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
 @app.task()
 def task_update_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -119,8 +126,9 @@ def task_update_paper(
         references,
         ):
     print("task_update_paper")
-    return paper_controller.update_paper(
+    return papers.update_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,

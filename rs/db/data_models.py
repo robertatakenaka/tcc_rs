@@ -37,11 +37,14 @@ def utcnow():
 
 def paper_summary(obj):
     data = {
+        "paper_id": obj._id,
         "uri_params": _paper_uri_params(obj),
-        "pub_year": obj.pub_year,
         "doi_with_lang": [item.as_dict() for item in obj.doi_with_lang],
+        "uri": [item.as_dict() for item in obj.uri],
+        "pub_year": obj.pub_year,
         "paper_titles": [item.as_dict() for item in obj.paper_titles],
         "abstracts": [item.as_dict() for item in obj.abstracts],
+        "keywords": [item.as_dict() for item in obj.keywords],
     }
     if hasattr(obj, 'score') and obj.score:
         data['score'] = float(obj.score)
@@ -95,6 +98,19 @@ class TextAndLang(EmbeddedDocument):
 
     def as_dict(self):
         return {"lang": self.lang, "text": self.text}
+
+    def __str__(self):
+        return self.to_json()
+
+
+class URI(EmbeddedDocument):
+    lang = StringField()
+    value = StringField()
+
+    def as_dict(self):
+        return {
+            "lang": self.lang, "value": self.value,
+        }
 
     def __str__(self):
         return self.to_json()
@@ -417,7 +433,9 @@ class Source(Document):
 
 
 class Paper(Document):
-    pid = StringField(max_length=23, unique=True, required=True)
+    pid = StringField(unique=True, required=True)
+    uri = EmbeddedDocumentListField(URI)
+
     network_collection = StringField()
     pub_year = StringField()
 
@@ -506,6 +524,16 @@ class Paper(Document):
             items.append(_create_linked_paper(paper, score))
             setattr(self, list_name, items)
             self.last_proc = utcnow()
+
+    def add_uri(self, lang, value):
+        if not self.uri:
+            self.uri = []
+        if not value:
+            return
+        item = URI()
+        item.lang = lang
+        item.value = value
+        self.uri.append(item)
 
     def add_doi(self, lang, value, creation_status, registration_status):
         if not self.doi_with_lang:

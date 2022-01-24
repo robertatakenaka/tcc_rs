@@ -57,7 +57,7 @@ COLLECTION_WEBSITE_URL_PATTERN = os.environ.get(
     "COLLECTION_WEBSITE_URL_PATTERN",
     default="{url}/documents/{id}"
 )
-
+PAPERS_LOCATION_IS_REQUIRED = bool(os.environ.get("PAPERS_LOCATION_IS_REQUIRED"))
 ####################################
 
 

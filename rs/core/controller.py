@@ -66,6 +66,7 @@ def search_papers(text, subject_area,
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -81,6 +82,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
     # registra o novo documento
     result_create_paper = tasks.create_paper(
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,
@@ -115,6 +117,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
 
 
 def update_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -130,6 +133,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
     # registra o novo documento
     result_update_paper = tasks.update_paper(
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,

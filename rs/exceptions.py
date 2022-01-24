@@ -93,3 +93,9 @@ class DBSaveNotUniqueError(Exception):
 
 class MissingRegisteredSources(Exception):
     ...
+
+
+class BadPaperURIFormatError(Exception):
+    ...
+
+

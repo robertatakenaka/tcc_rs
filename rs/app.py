@@ -19,6 +19,7 @@ controller.db_connect(configuration.DATABASE_CONNECT_URL)
 
 def receive_new_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -32,6 +33,7 @@ def receive_new_paper(
     """
     return controller.create_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -44,6 +46,7 @@ def receive_new_paper(
 
 def update_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,
@@ -57,6 +60,7 @@ def update_paper(
     """
     return controller.update_paper(
         network_collection, pid, main_lang, doi, pub_year,
+        uri,
         subject_areas,
         paper_titles,
         abstracts,

@@ -1,12 +1,15 @@
 from rs.db import (
     db,
 )
+from rs import exceptions
+from rs import configuration
 from rs.db.data_models import (
     Paper,
     PROC_STATUS_NA,
     PROC_STATUS_SOURCE_REGISTERED,
 )
 from rs.utils import response_utils
+
 
 REFERENCE_ATTRIBUTES = (
     "pub_year",
@@ -89,6 +92,7 @@ def get_paper_by_pid(pid):
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -101,6 +105,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
         registered_paper = _update_paper(
             paper,
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,
@@ -117,6 +122,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
 
 
 def update_paper(network_collection, pid, main_lang, doi, pub_year,
+                 uri,
                  subject_areas,
                  paper_titles,
                  abstracts,
@@ -129,6 +135,7 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
         registered_paper = _update_paper(
             registered_paper,
             network_collection, pid, main_lang, doi, pub_year,
+            uri,
             subject_areas,
             paper_titles,
             abstracts,
@@ -144,12 +151,14 @@ def update_paper(network_collection, pid, main_lang, doi, pub_year,
 
 
 def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
+                  uri,
                   subject_areas,
                   paper_titles,
                   abstracts,
                   keywords,
                   references,
                   ):
+
     main_lang = (
         main_lang or
         (paper_titles and paper_titles[0]['lang']) or
@@ -160,7 +169,14 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
     paper.pid = pid
     paper.pub_year = pub_year
 
+    _add_uri(paper, uri, main_lang)
     paper.add_doi(main_lang, doi, 'UNK', 'UNK')
+
+    if configuration.PAPERS_LOCATION_IS_REQUIRED:
+        if not paper.uri and not paper.doi:
+            raise exceptions.RequiredPaperDOIorPaperURI(
+                "Paper registration requires paper DOI or URI"
+            )
 
     for subject_area in subject_areas:
         paper.add_subject_area(subject_area)
@@ -197,6 +213,19 @@ def _update_paper(paper, network_collection, pid, main_lang, doi, pub_year,
     paper.save()
 
     return paper
+
+
+def _add_uri(paper, uri, main_lang):
+    if isinstance(uri, str):
+        paper.add_uri(main_lang, uri)
+        return
+    for item in uri:
+        try:
+            paper.add_uri(item.get("lang"), item['value'])
+        except (KeyError, TypeError):
+            raise exceptions.BadPaperURIFormatError(
+                'Expected format for paper uri '
+                '{"value": "uri value", "lang": "Language ISO Code 2-char"} ')
 
 
 def _add_reference(paper, ref):
