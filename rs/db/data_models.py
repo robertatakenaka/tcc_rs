@@ -50,9 +50,9 @@ def paper_summary(obj):
     if hasattr(obj, 'score') and obj.score:
         data['score'] = float(obj.score)
     if hasattr(obj, 'created') and obj.created:
-        data['created'] = obj.created
+        data['created'] = obj.created.isoformat()
     if hasattr(obj, 'updated') and obj.updated:
-        data['updated'] = obj.updated
+        data['updated'] = obj.updated.isoformat()
     return data
 
 
@@ -73,6 +73,7 @@ def _paper_uri_params(paper):
 def _create_connection(paper, score=None):
     item = Connection()
     item._id = paper._id
+    item.pid = paper.pid
     item.pub_year = paper.pub_year
     item.uri = paper.uri
     item.doi_with_lang = paper.doi_with_lang
@@ -88,16 +89,16 @@ class RefLink(EmbeddedDocument):
     pid = StringField()
     paper_id = StringField()
     year = StringField()
-    subject_areas = ListField(StringField())
+    subject_area = StringField()
 
     def as_dict(self):
         return {"_id": self.paper_id, "pid": self.pid,
-                "year": self.year, "subject_areas": self.subject_areas}
+                "year": self.year, "subject_area": self.subject_area}
 
     def as_tuple(self):
         return (
             self.year,
-            tuple(sorted(self.subject_areas)),
+            self.subject_area,
             self.pid,
             self.paper_id
         )
@@ -232,6 +233,7 @@ class RelatedPaper(EmbeddedDocument):
 
 class Connection(EmbeddedDocument):
     _id = StringField()
+    pid = StringField()
     pub_year = StringField()
     uri = EmbeddedDocumentListField(URI)
     doi_with_lang = EmbeddedDocumentListField(DOI)
@@ -241,7 +243,20 @@ class Connection(EmbeddedDocument):
     created = DateTimeField()
 
     def as_dict(self):
-        return paper_summary(self)
+        data = {
+            "paper_id": self._id,
+            "uri_params": _paper_uri_params(self),
+            "doi_with_lang": [item.as_dict() for item in self.doi_with_lang],
+            "uri": [item.as_dict() for item in self.uri],
+            "pub_year": self.pub_year,
+            "paper_titles": [item.as_dict() for item in self.paper_titles],
+            "abstracts": [item.as_dict() for item in self.abstracts],
+        }
+        if hasattr(self, 'score') and self.score:
+            data['score'] = float(self.score)
+        if hasattr(self, 'created') and self.created:
+            data['created'] = self.created.isoformat()
+        return data
 
     def __str__(self):
         return self.to_json()
@@ -417,17 +432,16 @@ class Source(Document):
     def add_reflink(self, paper_id, pid, year, subject_areas):
         if not self.reflinks:
             self.reflinks = []
-        reflink = RefLink()
-        reflink.paper_id = str(paper_id)
-        reflink.pid = pid
-        reflink.year = year
-        reflink.subject_areas = subject_areas
-        self.reflinks.append(reflink)
+        for subject_area in subject_areas:
+            reflink = RefLink()
+            reflink.paper_id = str(paper_id)
+            reflink.pid = pid
+            reflink.year = year
+            reflink.subject_area = subject_area
+            self.reflinks.append(reflink)
 
-    def get_reflinks_tuples(self, skip):
-        return set([reflink.as_tuple()
-                    for reflink in self.reflinks
-                    if reflink.paper_id != skip])
+    def get_reflinks_tuples(self):
+        return [reflink.as_tuple() for reflink in self.reflinks]
 
     @property
     def _id(self):
@@ -525,6 +539,9 @@ class Paper(Document):
             return None
 
     def get_connections(self, min_score=None):
+        return list(self._get_connections())
+
+    def _get_connections(self, min_score=None):
         if min_score:
             for item in self.connections:
                 if item.score and min_score <= item.score:
