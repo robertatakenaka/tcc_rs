@@ -53,11 +53,8 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
-                 create_sources,
-                 create_links,
                  ):
 
-    get_result = create_sources
     response = response_utils.create_response("create_paper")
 
     # registra o novo documento
@@ -69,27 +66,25 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             abstracts,
             keywords,
             references,
-            get_result,
+            get_result=True,
         )
     response.update(result_create_paper)
 
     paper_id = response.get("registered_paper")
 
-    if not create_sources or not paper_id:
-        # finaliza se a opção create_sources == False ou
-        # se houve erro ao registrar
+    if not paper_id:
+        # finaliza se houve erro ao registrar
         return response
 
     # obtém os dados do documento registrado
     paper = get_paper_by_record_id(paper_id)
 
     # cria ou atualiza os registros de sources usando os dados das referências
-    result = register_refs_sources(paper)
+    result = _register_refs_sources(paper)
     response.update(result or {})
 
-    if not create_links or paper.proc_status == PROC_STATUS_NA:
-        # finaliza se a opção create_links == False ou
-        # se paper não tem dados para processar a similaridade
+    if paper.proc_status == PROC_STATUS_NA:
+        # finaliza se paper não tem dados para processar a similaridade
         return response
 
     result = tasks.find_and_create_connections(paper_id)
@@ -104,11 +99,8 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
-                 create_sources,
-                 create_links,
                  ):
 
-    get_result = create_sources
     response = response_utils.create_response("update_paper")
 
     # registra o novo documento
@@ -121,27 +113,25 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
             abstracts,
             keywords,
             references,
-            get_result,
+            get_result=True,
         )
     response.update(result_update_paper)
 
     paper_id = response.get("registered_paper")
 
-    if not create_sources or not paper_id:
-        # finaliza se a opção create_sources == False ou
-        # se houve erro ao registrar
+    if not paper_id:
+        # finaliza se houve erro ao registrar
         return response
 
     # obtém os dados do documento registrado
     paper = get_paper_by_record_id(paper_id)
 
     # cria ou atualiza os registros de sources usando os dados das referências
-    result = register_refs_sources(paper)
+    result = _register_refs_sources(paper)
     response.update(result or {})
 
-    if not create_links or paper.proc_status == PROC_STATUS_NA:
-        # finaliza se a opção create_links == False ou
-        # se paper não tem dados para processar a similaridade
+    if paper.proc_status == PROC_STATUS_NA:
+        # finaliza se paper não tem dados para processar a similaridade
         return response
 
     result = tasks.find_and_create_connections(paper_id)
@@ -149,7 +139,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
     return response
 
 
-def register_refs_sources(paper):
+def _register_refs_sources(paper):
     response = response_utils.create_response("register_refs_sources")
 
     if not paper.proc_status == PROC_STATUS_SOURCE_REGISTERED:

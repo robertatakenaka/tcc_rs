@@ -23,8 +23,6 @@ def receive_new_paper(
         abstracts,
         keywords,
         references,
-        create_sources=None,
-        create_links=None
         ):
     """
     Cria paper
@@ -37,8 +35,6 @@ def receive_new_paper(
         abstracts,
         keywords,
         references,
-        create_sources,
-        create_links,
     )
 
 
@@ -51,8 +47,6 @@ def update_paper(
         abstracts,
         keywords,
         references,
-        create_sources=None,
-        create_links=None
         ):
     """
     Atualiza paper
@@ -66,8 +60,6 @@ def update_paper(
         abstracts,
         keywords,
         references,
-        create_sources,
-        create_links,
     )
 
 
@@ -165,7 +157,7 @@ def main():
         )
     )
     get_connected_papers_parser.add_argument(
-        "min_score",
+        "--min_score",
         help=(
             "min_score"
         )
@@ -191,7 +183,8 @@ def main():
             response = receive_new_paper(**paper_data)
         else:
             response = update_paper(**paper_data)
-        _display_response(response, pretty=False)
+        files_utils.write_file(
+            args.log_file_path, json.dumps(response) + "\n", "a")
 
     elif args.command == "search_papers":
         response = search_papers(
