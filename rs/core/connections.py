@@ -1,4 +1,7 @@
-from rs.configuration import ITEMS_PER_PAGE, add_uri, MAX_CANDIDATES
+from datetime import datetime
+from rs.configuration import (
+    ITEMS_PER_PAGE, add_uri, get_years_range
+)
 from rs.utils import response_utils
 from rs import exceptions
 from rs.core import recommender
@@ -23,20 +26,35 @@ def _db_connect(host):
 def search_sources(doi, pub_year, surname, organization_author, source,
                    journal, vol,
                    items_per_page, page, order_by):
+    try:
+        pub_year = int(pub_year)
+        if len(str(pub_year)) != 4:
+            raise ValueError("pub_year has not 4 digits")
+        max_value = datetime.now().year + 1
+        if pub_year > max_value:
+            raise ValueError("pub_year must be <= %i" % max_value)
+    except (TypeError, ValueError) as e:
+        raise exceptions.SourceSearchInputError(
+            "Error: %s. Value of `pub_year`=%s. It must be a number with 4 digits. " % (e, pub_year)
+        )
+
     values = [doi, pub_year, surname, organization_author, source, journal, vol]
     if not any(values):
-        raise exceptions.InsuficientArgumentsToSearchDocumentError(
+        raise exceptions.SourceSearchInputError(
             "rs.db.search_sources requires at least one argument: "
             "doi, pub_year, surname, organization_author, source, journal, vol"
         )
-    field_names = [
+    values.extend([items_per_page, page, order_by])
+    field_names = (
         'doi', 'pub_year', 'surname', 'organization_author', 'source',
-        'journal', 'vol',
-    ]
-    kwargs = db._get_kwargs(
-        db._get_query_set_with_and(
-            field_names, values), items_per_page, page, order_by
+        'journal', 'vol', 'items_per_page', 'page', 'order_by',
     )
+
+    kwargs = {
+        k: v
+        for k, v in zip(field_names, values)
+        if v
+    }
     return db.get_records(Source, **kwargs)
 
 
@@ -49,8 +67,20 @@ def create_source(
         source_person_author_surname, source_organization_author,
         ):
 
+    try:
+        pub_year = int(pub_year)
+        if len(str(pub_year)) != 4:
+            raise ValueError("pub_year has not 4 digits")
+        max_value = datetime.now().year + 1
+        if pub_year > max_value:
+            raise ValueError("pub_year must be <= %i" % max_value)
+    except (TypeError, ValueError) as e:
+        raise exceptions.SourceCreationInputError(
+            "Error: %s. Value of `pub_year`=%s. It must be a number with 4 digits. " % (e, pub_year)
+        )
+
     _source = Source()
-    _source.pub_year = pub_year or None
+    _source.pub_year = pub_year
     _source.vol = vol or None
     _source.num = num or None
     _source.suppl = suppl or None
@@ -118,40 +148,69 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark, pid, year, subject_are
         return response
 
 
-def _get_connected_by_refs__papers_ids(paper_id, subject_areas=None,
-                                       from_year=None, to_year=None):
-    kwargs = {"referenced_by": paper_id}
-    if not all([subject_areas, from_year, to_year]):
-        ids = set()
-        reflinks = set()
-        for source in db.get_records(Source, **kwargs):
-            ids.update(set(source.referenced_by))
-            reflinks.update(source.get_reflinks_tuples(skip=paper_id))
-        if paper_id in ids:
-            ids.remove(paper_id)
-        if len(ids) < MAX_CANDIDATES:
-            return list(ids)
-        else:
-            return [
-                item[-1]
-                for item in sorted(reflinks, reversed=True)[:MAX_CANDIDATES]
-            ]
-
-    ids = set()
+def _get_ids_connected_by_references(paper_id, subject_areas=None, from_year=None, to_year=None):
+    if not paper_id:
+        raise exceptions.ReferenceConnectionSearchInputError(
+            "_get_ids_connected_by_references requires paper_id parameter"
+        )
+    params = dict(
+        referenced_by=paper_id,
+        reflinks__subject_areas__in=subject_areas,
+        reflinks__year__gte=int(from_year or 0),
+        reflinks__year__lte=int(to_year or 0),
+    )
+    kwargs = {
+        k: v
+        for k, v in params.items()
+        if v
+    }
+    reflinks = set()
+    print(kwargs)
     for source in db.get_records(Source, **kwargs):
-        for item in source.get_reflinks_tuples(skip=paper_id):
-            s_year, s_subj_areas, s_pid, s__id = item
-            if subject_areas and (set(subject_areas) & set(s_subj_areas)):
-                if from_year and to_year and from_year <= s_year <= to_year:
-                    ids.add(s__id)
-                elif from_year and from_year <= s_year:
-                    ids.add(s__id)
-                elif to_year and s_year <= to_year:
-                    ids.add(s__id)
+        print(source._id)
+        t = source.get_reflinks_tuples()
+        print(t)
+        reflinks.update(set(t))
 
-    if paper_id in ids:
-        ids.remove(paper_id)
-    return list(ids)
+    reflinks = sorted(reflinks)
+    print(len(reflinks))
+    if any([subject_areas, from_year, to_year]):
+        print([subject_areas, from_year, to_year])
+        return list(
+            _filter_results(
+                reflinks, paper_id, subject_areas, from_year, to_year
+            )
+        )
+    return [
+        item
+        for item in reflinks
+        if item[-1] != paper_id
+    ]
+
+
+def _filter_results(reflinks, paper_id, subject_areas, from_year, to_year):
+    for item in reflinks:
+        if _valid_reflink(item, paper_id, subject_areas, from_year, to_year):
+            yield item[-1]
+
+
+def _valid_reflink(item, paper_id, subject_areas, from_year, to_year):
+    reflink_year, reflink_subject_areas, ign, reflink_paper_id = item
+
+    if paper_id == reflink_paper_id:
+        # it is itself, skip
+        return False
+
+    if subject_areas and not (set(subject_areas) & set(reflink_subject_areas)):
+        return False
+
+    if from_year and to_year:
+        return from_year <= reflink_year <= to_year
+    if from_year and (from_year <= reflink_year):
+        return True
+    if to_year:
+        return reflink_year <= to_year
+    return False
 
 
 def _get_semantic_search_parameters(selected_ids, paper_id=None):
@@ -232,8 +291,9 @@ def find_and_create_connections(paper_id):
             response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
         return response
 
-    ids = _get_connected_by_refs__papers_ids(
-            paper_id, paper.subject_areas, paper.pub_year)
+    years_range = get_years_range(paper)
+    ids = _get_ids_connected_by_references(
+        paper_id, paper.subject_areas, *years_range)
     if not ids:
         response_utils.add_result(response, "There is no `ids` to make links")
         return response
@@ -259,9 +319,9 @@ def find_and_create_connections(paper_id):
 
 ##############################################################################
 
-def search_papers(text, subject_area, from_year, to_year):
+def search_papers(text, subject_areas, from_year, to_year):
     selected_ids = _select_papers_ids_by_text(
-        text, subject_area, from_year, to_year)
+        text, subject_areas, from_year, to_year)
     parameters = _get_semantic_search_parameters(selected_ids)
 
     papers = recommender.compare_papers(
@@ -282,7 +342,7 @@ def search_papers(text, subject_area, from_year, to_year):
 
 
 def _select_papers_ids_by_text(
-        text, subject_area=None, from_year=None, to_year=None,
+        text, subject_areas=None, from_year=None, to_year=None,
         page=None, items_per_page=None, order_by=None,
         ):
     page = page or 1
@@ -294,7 +354,7 @@ def _select_papers_ids_by_text(
     selected_ids = set()
     for word in words:
         _ids = _select_papers_ids_by_word(
-            word, subject_area,
+            word, subject_areas,
             from_year, to_year,
             items_per_page, page, order_by,
         )
@@ -303,7 +363,7 @@ def _select_papers_ids_by_text(
 
 
 def _select_papers_ids_by_word(
-        text, subject_area,
+        text, subject_areas,
         from_year, to_year,
         page=None, items_per_page=None, order_by=None,
         ):
@@ -312,21 +372,21 @@ def _select_papers_ids_by_word(
     order_by = order_by or '-pub_year'
 
     registered_papers = _search_papers(
-        text, subject_area,
+        text, subject_areas,
         from_year, to_year,
         items_per_page, page, order_by,
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(_get_connected_by_refs__papers_ids(
-                        paper._id, subject_area,
+        ids |= set(_get_ids_connected_by_references(
+                        paper._id, subject_areas,
                         from_year, to_year))
         ids |= set([paper._id])
 
     return ids
 
 
-def _search_papers(text, subject_area,
+def _search_papers(text, subject_areas,
                    begin_year, end_year,
                    items_per_page, page, order_by,
                    ):
@@ -334,9 +394,9 @@ def _search_papers(text, subject_area,
         raise exceptions.InsuficientArgumentsToSearchDocumentError(
             "searcher._search_papers requires text parameter"
         )
-    values = [subject_area, begin_year, end_year, ]
+    values = [subject_areas, begin_year, end_year, ]
     field_names = [
-        'subject_areas',
+        'subject_areas__in',
         'pub_year__gte',
         'pub_year__lte',
     ]

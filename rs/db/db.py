@@ -76,10 +76,20 @@ def save_record(data):
 
 
 def get_records(DataModelClass, **kwargs):
+    try:
+        order_by = kwargs.pop("order_by")
+    except KeyError:
+        order_by = '-updated'
 
-    order_by = kwargs.get("order_by") or '-updated'
-    items_per_page = kwargs.get("items_per_page") or 50
-    page = kwargs.get("page") or 1
+    try:
+        items_per_page = kwargs.pop("items_per_page")
+    except KeyError:
+        items_per_page = 50
+
+    try:
+        page = kwargs.pop("page")
+    except KeyError:
+        page = 1
 
     skip = ((page - 1) * items_per_page)
     limit = items_per_page
@@ -91,35 +101,35 @@ def get_records(DataModelClass, **kwargs):
         **kwargs).order_by(order_by).skip(skip).limit(limit)
 
 
-def _get_query_set_with_or(field_names, values):
-    qs = None
-    for name, value in zip(field_names, values):
-        if not value:
-            continue
-        _kwargs = {name: value}
-        if qs:
-            qs |= Q(**_kwargs)
-        else:
-            qs = Q(**_kwargs)
-    return qs
+# def get_query_set_with_or(field_names, values):
+#     qs = None
+#     for name, value in zip(field_names, values):
+#         if not value:
+#             continue
+#         _kwargs = {name: value}
+#         if qs:
+#             qs |= Q(**_kwargs)
+#         else:
+#             qs = Q(**_kwargs)
+#     return qs
 
 
-def _get_query_set_with_and(field_names, values):
-    qs = None
-    for name, value in zip(field_names, values):
-        if not value:
-            continue
-        _kwargs = {name: value}
-        if qs:
-            qs &= Q(**_kwargs)
-        else:
-            qs = Q(**_kwargs)
-    return qs
+# def get_query_set_with_and(field_names, values):
+#     qs = None
+#     for name, value in zip(field_names, values):
+#         if not value:
+#             continue
+#         _kwargs = {name: value}
+#         if qs:
+#             qs &= Q(**_kwargs)
+#         else:
+#             qs = Q(**_kwargs)
+#     return qs
 
 
-def _get_kwargs(query_set, items_per_page, page, order_by):
-    arg_names = ['qs', 'items_per_page', 'page', 'order_by']
-    arg_values = [query_set, items_per_page, page, order_by]
-    return {
-        k: v for k, v in zip(arg_names, arg_values) if v
-    }
+# def _get_kwargs(query_set, items_per_page, page, order_by):
+#     arg_names = ['qs', 'items_per_page', 'page', 'order_by']
+#     arg_values = [query_set, items_per_page, page, order_by]
+#     return {
+#         k: v for k, v in zip(arg_names, arg_values) if v
+#     }

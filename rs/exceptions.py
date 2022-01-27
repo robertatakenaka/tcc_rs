@@ -18,6 +18,18 @@ class UnableToAddConnectionError(Exception):
     ...
 
 
+class SourceCreationInputError(Exception):
+    ...
+
+
+class SourceSearchInputError(Exception):
+    ...
+
+
+class ReferenceConnectionSearchInputError(Exception):
+    ...
+
+
 # class DocumentDoesNotExistError(Exception):
 #     ...
 

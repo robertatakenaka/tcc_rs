@@ -11,6 +11,7 @@ from mongoengine import (
     ListField,
     DateTimeField,
     DecimalField,
+    IntField,
 )
 
 """
@@ -74,7 +75,7 @@ def _create_connection(paper, score=None):
     item = Connection()
     item._id = paper._id
     item.pid = paper.pid
-    item.pub_year = paper.pub_year
+    item.pub_year = int(paper.pub_year)
     item.uri = paper.uri
     item.doi_with_lang = paper.doi_with_lang
     item.paper_titles = paper.paper_titles
@@ -88,17 +89,17 @@ def _create_connection(paper, score=None):
 class RefLink(EmbeddedDocument):
     pid = StringField()
     paper_id = StringField()
-    year = StringField()
-    subject_area = StringField()
+    year = IntField(required=True)
+    subject_areas = ListField(StringField())
 
     def as_dict(self):
         return {"_id": self.paper_id, "pid": self.pid,
-                "year": self.year, "subject_area": self.subject_area}
+                "year": self.year, "subject_areas": self.subject_areas}
 
     def as_tuple(self):
         return (
             self.year,
-            self.subject_area,
+            tuple(sorted(self.subject_areas)),
             self.pid,
             self.paper_id
         )
@@ -234,7 +235,7 @@ class RelatedPaper(EmbeddedDocument):
 class Connection(EmbeddedDocument):
     _id = StringField()
     pid = StringField()
-    pub_year = StringField()
+    pub_year = IntField(required=True)
     uri = EmbeddedDocumentListField(URI)
     doi_with_lang = EmbeddedDocumentListField(DOI)
     paper_titles = EmbeddedDocumentListField(TextAndLang)
@@ -350,7 +351,7 @@ class Reference(EmbeddedDocument):
 
 
 class Source(Document):
-    pub_year = StringField()
+    pub_year = IntField(required=True)
     vol = StringField()
     num = StringField()
     suppl = StringField()
@@ -432,13 +433,12 @@ class Source(Document):
     def add_reflink(self, paper_id, pid, year, subject_areas):
         if not self.reflinks:
             self.reflinks = []
-        for subject_area in subject_areas:
-            reflink = RefLink()
-            reflink.paper_id = str(paper_id)
-            reflink.pid = pid
-            reflink.year = year
-            reflink.subject_area = subject_area
-            self.reflinks.append(reflink)
+        reflink = RefLink()
+        reflink.paper_id = str(paper_id)
+        reflink.pid = pid
+        reflink.year = int(year)
+        reflink.subject_areas = subject_areas
+        self.reflinks.append(reflink)
 
     def get_reflinks_tuples(self):
         return [reflink.as_tuple() for reflink in self.reflinks]
@@ -452,7 +452,8 @@ class Source(Document):
             return "journal"
         if self.conf_name:
             return "conference"
-        if any([self.thesis_degree, self.thesis_date, self.thesis_org, self.thesis_loc, self.thesis_country]):
+        if any([self.thesis_degree, self.thesis_date, self.thesis_org,
+                self.thesis_loc, self.thesis_country]):
             return "thesis"
         if self.source:
             return "book"
@@ -471,7 +472,7 @@ class Paper(Document):
     uri = EmbeddedDocumentListField(URI)
 
     network_collection = StringField()
-    pub_year = StringField()
+    pub_year = IntField(required=True)
 
     doi_with_lang = EmbeddedDocumentListField(DOI)
 
