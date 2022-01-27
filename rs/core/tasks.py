@@ -1,11 +1,11 @@
 import logging
+
 from celery import Celery
 
 from rs.db.data_models import PROC_STATUS_TODO
 from rs.utils import response_utils
 from rs.core import papers, connections
 from rs.configuration import (
-    DATABASE_CONNECT_URL,
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND_URL,
     PAPERS_REGISTRATION_QUEUE,
@@ -17,8 +17,6 @@ from rs.configuration import (
 app = Celery('tasks', backend=CELERY_RESULT_BACKEND_URL, broker=CELERY_BROKER_URL)
 
 LOGGER = logging.getLogger(__name__)
-
-connections._db_connect(DATABASE_CONNECT_URL)
 
 
 def get_queue(registered_paper):

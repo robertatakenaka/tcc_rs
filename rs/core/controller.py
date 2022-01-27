@@ -18,11 +18,11 @@ from rs.db.data_models import (
 LOGGER = logging.getLogger(__name__)
 
 
-def db_connect(host):
-    try:
-        db.mk_connection(host)
-    except:
-        exit()
+# def db_connect(host):
+#     try:
+#         db.mk_connection(host)
+#     except:
+#         exit()
 
 
 def get_subject_areas(journal_issn):

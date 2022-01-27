@@ -4,15 +4,7 @@ import json
 from rs.core import (
     controller,
 )
-from rs import configuration
 from rs.utils import files_utils
-
-
-if not configuration.DATABASE_CONNECT_URL:
-    raise ValueError("Missing DATABASE_CONNECT_URL")
-
-
-controller.db_connect(configuration.DATABASE_CONNECT_URL)
 
 
 def receive_new_paper(

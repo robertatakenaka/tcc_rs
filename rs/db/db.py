@@ -6,21 +6,10 @@ from tenacity import (
 from mongoengine.document import NotUniqueError
 from mongoengine import (
     connect,
-    Q,
 )
 
 from rs import exceptions
-
-
-def mk_connection(host):
-    try:
-        if not host:
-            raise ValueError("Missing host of mongodb")
-        _db_connect_by_uri(host)
-    except Exception as e:
-        raise exceptions.DBConnectError(
-            {"exception": type(e), "msg": str(e)}
-        )
+from rs import configuration
 
 
 @retry(wait=wait_exponential(), stop=stop_after_attempt(10))
@@ -43,6 +32,18 @@ def _db_connect(host, port, schema, login, password, **extra_dejson):
     )
 
     return connect(host=uri, **extra_dejson)
+
+
+def mk_connection(host):
+    try:
+        if not host:
+            raise ValueError("Missing DATABASE_CONNECT_URL")
+        _db_connect_by_uri(host)
+    except Exception as e:
+        raise exceptions.DBConnectError(
+            {"exception": type(e), "msg": str(e)}
+        )
+mk_connection(configuration.DATABASE_CONNECT_URL)
 
 
 def get_record_by__id(DataModelClass, _id):

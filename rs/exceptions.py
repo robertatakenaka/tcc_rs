@@ -54,8 +54,8 @@ class ReferenceConnectionSearchInputError(Exception):
 #     ...
 
 
-# class DBConnectError(Exception):
-#     ...
+class DBConnectError(Exception):
+    ...
 
 
 # class RemoteAndLocalFileError(Exception):

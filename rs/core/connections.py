@@ -16,11 +16,11 @@ from rs.db.data_models import (
 )
 
 
-def _db_connect(host):
-    try:
-        db.mk_connection(host)
-    except:
-        exit()
+# def _db_connect(host):
+#     try:
+#         db.mk_connection(host)
+#     except:
+#         exit()
 
 
 def search_sources(doi, pub_year, surname, organization_author, source,
