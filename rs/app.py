@@ -7,6 +7,25 @@ from rs.core import (
 from rs.utils import files_utils
 
 
+def register_new_papers(list_file_path, output_file_path):
+    files_utils.write_file(output_file_path, "")
+    with open(list_file_path) as fp:
+        for json_file_path in fp.readlines():
+            try:
+                with open(json_file_path.strip()) as fpj:
+                    data = fpj.read()
+                data = json.loads(data)
+                response = controller.create_paper(**data)
+            except Exception as e:
+                response = {
+                    "json_file_path": json_file_path,
+                    "exception": type(e), "msg": str(e),
+                }
+            finally:
+                files_utils.write_file(
+                    output_file_path, json.dumps(response), "a")
+
+
 def receive_new_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
@@ -105,6 +124,25 @@ def main():
         )
     )
 
+    register_new_papers_parser = subparsers.add_parser(
+        "register_new_papers",
+        help=(
+            "Register a list of papers"
+        )
+    )
+    register_new_papers_parser.add_argument(
+        "source_files_path",
+        help=(
+            "/path/documents.txt"
+        )
+    )
+    register_new_papers_parser.add_argument(
+        "result_file_path",
+        help=(
+            "/path/result.jsonl"
+        )
+    )
+
     search_papers_parser = subparsers.add_parser(
         "search_papers",
         help=(
@@ -177,6 +215,9 @@ def main():
             response = update_paper(**paper_data)
         files_utils.write_file(
             args.log_file_path, json.dumps(response) + "\n", "a")
+
+    elif args.command == "register_new_papers":
+        register_new_papers(args.source_files_path, args.result_file_path)
 
     elif args.command == "search_papers":
         response = search_papers(
