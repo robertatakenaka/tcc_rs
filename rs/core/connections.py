@@ -26,6 +26,33 @@ from rs.db.data_models import (
 def search_sources(doi, pub_year, surname, organization_author, source,
                    journal, vol,
                    items_per_page, page, order_by):
+    if doi:
+        records = search_sources_by_doi(doi)
+        try:
+            source = records[0]
+        except IndexError:
+            pass
+        else:
+            return records
+    return search_sources_by_data(
+        doi, pub_year, surname, organization_author, source,
+        journal, vol,
+        items_per_page, page, order_by
+    )
+
+
+def search_sources_by_doi(doi):
+    if not doi:
+        raise exceptions.SourceSearchInputError(
+            "rs.db.search_sources_by_doi requires doi"
+        )
+    kwargs = {'doi': doi}
+    return db.get_records(Source, **kwargs)
+
+
+def search_sources_by_data(doi, pub_year, surname, organization_author, source,
+                           journal, vol,
+                           items_per_page, page, order_by):
     try:
         pub_year = int(pub_year)
         if len(str(pub_year)) != 4:
