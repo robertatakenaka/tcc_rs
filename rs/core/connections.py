@@ -94,17 +94,18 @@ def create_source(
         source_person_author_surname, source_organization_author,
         ):
 
-    try:
-        pub_year = int(pub_year)
-        if len(str(pub_year)) != 4:
-            raise ValueError("pub_year has not 4 digits")
-        max_value = datetime.now().year + 1
-        if pub_year > max_value:
-            raise ValueError("pub_year must be <= %i" % max_value)
-    except (TypeError, ValueError) as e:
-        raise exceptions.SourceCreationInputError(
-            "Error: %s. Value of `pub_year`=%s. It must be a number with 4 digits. " % (e, pub_year)
-        )
+    if not doi:
+        try:
+            pub_year = int(pub_year)
+            if len(str(pub_year)) != 4:
+                raise ValueError("pub_year has not 4 digits")
+            max_value = datetime.now().year + 1
+            if pub_year > max_value:
+                raise ValueError("pub_year must be <= %i" % max_value)
+        except (TypeError, ValueError) as e:
+            raise exceptions.SourceCreationInputError(
+                "Error: %s. Value of `pub_year`=%s. It must be a number with 4 digits. " % (e, pub_year)
+            )
 
     _source = Source()
     _source.pub_year = pub_year

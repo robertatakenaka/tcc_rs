@@ -23,7 +23,7 @@ def register_new_papers(list_file_path, output_file_path):
                 }
             finally:
                 files_utils.write_file(
-                    output_file_path, json.dumps(response), "a")
+                    output_file_path, json.dumps(response) + "\n", "a")
 
 
 def receive_new_paper(
@@ -33,7 +33,7 @@ def receive_new_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra=None,
         ):
     """
     Cria paper
@@ -45,7 +45,7 @@ def receive_new_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
     )
 
 
@@ -57,7 +57,7 @@ def update_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra=None,
         ):
     """
     Atualiza paper
@@ -70,7 +70,7 @@ def update_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
     )
 
 

@@ -52,7 +52,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  paper_titles,
                  abstracts,
                  keywords,
-                 references,
+                 references, extra=None,
                  ):
 
     response = response_utils.create_response("create_paper")
@@ -65,7 +65,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             paper_titles,
             abstracts,
             keywords,
-            references,
+            references, extra,
             get_result=True,
         )
     response.update(result_create_paper)
@@ -98,7 +98,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  paper_titles,
                  abstracts,
                  keywords,
-                 references,
+                 references, extra=None,
                  ):
 
     response = response_utils.create_response("update_paper")
@@ -112,7 +112,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
             paper_titles,
             abstracts,
             keywords,
-            references,
+            references, extra,
             get_result=True,
         )
     response.update(result_update_paper)

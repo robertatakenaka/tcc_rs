@@ -45,7 +45,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  paper_titles,
                  abstracts,
                  keywords,
-                 references,
+                 references, extra,
                  get_result=None,
                  ):
     print("call task_create_paper")
@@ -58,7 +58,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             paper_titles,
             abstracts,
             keywords,
-            references,
+            references, extra,
         ),
     )
     return _handle_result("task create_paper", res, get_result)
@@ -72,7 +72,7 @@ def task_create_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
         ):
     print("task_create_paper")
     return papers.create_paper(
@@ -82,7 +82,7 @@ def task_create_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
     )
 
 
@@ -94,7 +94,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  paper_titles,
                  abstracts,
                  keywords,
-                 references,
+                 references, extra,
                  get_result=None,
                  ):
     print("call task_update_paper")
@@ -108,7 +108,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
             paper_titles,
             abstracts,
             keywords,
-            references,
+            references, extra,
         ),
     )
     return _handle_result("task update_paper", res, get_result)
@@ -123,7 +123,7 @@ def task_update_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
         ):
     print("task_update_paper")
     return papers.update_paper(
@@ -134,7 +134,7 @@ def task_update_paper(
         paper_titles,
         abstracts,
         keywords,
-        references,
+        references, extra,
     )
 
 

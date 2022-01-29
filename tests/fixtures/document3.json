@@ -1,6 +1,7 @@
 {
 	"pid": "9875678900987667890992",
 	"network_collection": "scl",
+	"uri": "",
 	"pub_year": "2016",
 	"doi": "1920453",
     "main_lang": "es",
@@ -11,6 +12,7 @@
 		{"lang": "en", "text": "Anything but the same xxx"}
 	],
 	"references": [
-		{"pub_year": "1900", "surname": "Smith", "journal": "Journal"}
-	]
+		{"pub_year": "1900", "surname": "Smith", "journal": "Journal", "doi": "xx"}
+	],
+	"extra": {"tese": "uma tese"}
 }

@@ -12,6 +12,7 @@ from mongoengine import (
     DateTimeField,
     DecimalField,
     IntField,
+    DictField,
 )
 
 """
@@ -47,6 +48,7 @@ def paper_summary(obj):
         "paper_titles": [item.as_dict() for item in obj.paper_titles],
         "abstracts": [item.as_dict() for item in obj.abstracts],
         "keywords": [item.as_dict() for item in obj.keywords],
+        "extra": item.extra,
     }
     if hasattr(obj, 'score') and obj.score:
         data['score'] = float(obj.score)
@@ -308,6 +310,8 @@ class Reference(EmbeddedDocument):
 
     @property
     def has_data_enough(self):
+        if self.doi:
+            return True
         if not self.pub_year:
             return False
         if self.journal and (self.surname or self.organization_author):
@@ -489,12 +493,14 @@ class Paper(Document):
 
     text_s = StringField()
 
+    extra = DictField()
+
     # datas deste registro
     created = DateTimeField()
     updated = DateTimeField()
 
     meta = {
-        'collection': 'rs_paper',
+        'collection': 'rs_text',
         'indexes': [
             'subject_areas',
             'pid',
@@ -504,6 +510,7 @@ class Paper(Document):
             'network_collection',
             'recommendable',
             'proc_status',
+            'extra',
             {'fields': ['$text_s', ],
              'default_language': 'english',
              'weights': {'text_s': 10, }
@@ -522,6 +529,10 @@ class Paper(Document):
         self.keywords = []
         self.references = []
         self.connections = []
+        self.recommendable = None
+        self.proc_status = None
+        self.text_s = None
+        self.extra = None
 
     def as_dict(self):
         data = {"_id": self._id}

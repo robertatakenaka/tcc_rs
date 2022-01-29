@@ -1,5 +1,6 @@
 {
 	"pid": "9875678900947667890992",
+	"uri": "",
 	"network_collection": "scl",
 	"pub_year": "2014",
 	"doi": "1020253",
@@ -11,6 +12,7 @@
 		{"lang": "en", "text": "It is an Health Sciences abstract"}
 	],
 	"references": [
-		{"pub_year": "1900", "surname": "Smith", "journal": "Journal"}
-	]
+		{"pub_year": "1900", "surname": "Smith", "journal": "Journal", "doi": "xx"}
+	],
+	"extra": {"tese": "uma tese"}
 }

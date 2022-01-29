@@ -58,6 +58,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
+                 extra=None,
                  ):
     response = response_utils.create_response("create_paper")
     paper = Paper()
@@ -71,6 +72,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             abstracts,
             keywords,
             references,
+            extra,
         )
         response['registered_paper'] = registered_paper._id
     except Exception as e:
@@ -88,6 +90,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  abstracts,
                  keywords,
                  references,
+                 extra=None,
                  ):
     response = response_utils.create_response("update_paper")
     try:
@@ -116,6 +119,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
             abstracts,
             keywords,
             references,
+            extra,
         )
         response['registered_paper'] = registered_paper._id
     except Exception as e:
@@ -132,6 +136,7 @@ def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
                     abstracts,
                     keywords,
                     references,
+                    extra,
                     ):
 
     if configuration.ABSTRACTS_AND_REFERENCES_ARE_REQUIRED:
@@ -145,6 +150,7 @@ def _register_paper(paper, network_collection, pid, main_lang, doi, pub_year,
         (abstracts and abstracts[0]['lang'])
     )
     paper.clear()
+    paper.extra = extra
     paper.network_collection = network_collection
     paper.pid = pid
     paper.pub_year = pub_year
