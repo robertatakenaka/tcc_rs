@@ -2,6 +2,7 @@ import argparse
 import csv
 
 from rs.db.data_models import Source, Paper
+from rs.db import db
 
 
 def get_records(DataModelClass):

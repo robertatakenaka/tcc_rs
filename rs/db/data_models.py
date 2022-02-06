@@ -463,10 +463,22 @@ class Source(Document):
             return "book"
         return "unknown"
 
+    def to_upper(self, name):
+        v = getattr(self, name)
+        if v and isinstance(v, str):
+            setattr(self, name, v.upper())
+
     def save(self, *args, **kwargs):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
+        self.doi = self.doi and self.doi.upper()
+        self.to_upper('pub_year')
+        self.to_upper('surname')
+        self.to_upper('organization_author')
+        self.to_upper('source')
+        self.to_upper('journal')
+        self.to_upper('vol')
         self.ref_type = self.ref_type or self.get_ref_type()
         return super(Source, self).save(*args, **kwargs)
 
@@ -591,7 +603,7 @@ class Paper(Document):
             return
         item = DOI()
         item.lang = lang
-        item.value = value
+        item.value = value.upper()
         item.creation_status = creation_status
         item.registration_status = registration_status
         self.doi_with_lang.append(item)
@@ -674,7 +686,7 @@ class Paper(Document):
         item.page = page or None
         item.surname = surname or None
         item.organization_author = organization_author or None
-        item.doi = doi or None
+        item.doi = (doi and doi.upper()) or None
         item.journal = journal or None
         item.paper_title = paper_title or None
         item.source = source or None

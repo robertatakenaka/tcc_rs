@@ -46,7 +46,7 @@ def search_sources_by_doi(doi):
         raise exceptions.SourceSearchInputError(
             "rs.db.search_sources_by_doi requires doi"
         )
-    kwargs = {'doi': doi}
+    kwargs = {'doi': doi.upper()}
     return db.get_records(Source, **kwargs)
 
 
@@ -77,11 +77,13 @@ def search_sources_by_data(doi, pub_year, surname, organization_author, source,
         'journal', 'vol', 'items_per_page', 'page', 'order_by',
     )
 
-    kwargs = {
-        k: v
-        for k, v in zip(field_names, values)
-        if v
-    }
+    kwargs = {}
+    for k, v in zip(field_names, values):
+        if v:
+            try:
+                kwargs[k] = v.upper()
+            except AttributeError:
+                kwargs[k] = v
     return db.get_records(Source, **kwargs)
 
 
