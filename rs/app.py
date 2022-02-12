@@ -1,5 +1,6 @@
 import argparse
 import json
+from deepcopy import copy
 
 from rs.core import (
     controller,
@@ -7,12 +8,13 @@ from rs.core import (
 from rs.utils import files_utils
 
 
-def register_new_papers(list_file_path, output_file_path):
+def _register_new_papers(list_file_path, output_file_path):
     files_utils.write_file(output_file_path, "")
     with open(list_file_path) as fp:
         for json_file_path in fp.readlines():
+            json_file_path = json_file_path.strip()
             try:
-                with open(json_file_path.strip()) as fpj:
+                with open(json_file_path) as fpj:
                     data = fpj.read()
                 data = json.loads(data)
                 response = controller.create_paper(**data)
@@ -24,6 +26,50 @@ def register_new_papers(list_file_path, output_file_path):
             finally:
                 files_utils.write_file(
                     output_file_path, json.dumps(response) + "\n", "a")
+
+
+def _register_new_papers_split_abstracts(list_file_path, output_file_path):
+    files_utils.write_file(output_file_path, "")
+    with open(list_file_path) as fp:
+        for json_file_path in fp.readlines():
+            json_file_path = json_file_path.strip()
+            try:
+                with open(json_file_path) as fpj:
+                    data = fpj.read()
+                data = json.loads(data)
+                for abstract in data['abstracts']:
+
+                    try:
+                        abstract['pid'] = abstract['pid'] + "_" + abstract['lang']
+                        data_copy = copy(data)
+                        data_copy['abstracts'] = [abstract]
+                        data_copy['paper_titles'] = []
+                        data_copy['keywords'] = []
+                        response = controller.create_paper(**data_copy)
+                    except Exception as e:
+                        response = {
+                            "json_file_path": json_file_path,
+                            "exception": str(type(e)), "msg": str(e),
+                        }
+                    finally:
+                        files_utils.write_file(
+                            output_file_path, json.dumps(response) + "\n", "a")
+
+            except Exception as e:
+                response = {
+                    "json_file_path": json_file_path,
+                    "exception": str(type(e)), "msg": str(e),
+                }
+            finally:
+                files_utils.write_file(
+                    output_file_path, json.dumps(response) + "\n", "a")
+
+
+def register_new_papers(list_file_path, output_file_path, split_abstracts):
+    if split_abstracts == "split_abstracts":
+        _register_new_papers_split_abstracts(list_file_path, output_file_path)
+    else:
+        _register_new_papers(list_file_path, output_file_path)
 
 
 def receive_new_paper(
@@ -143,6 +189,13 @@ def main():
         )
     )
 
+    register_new_papers_parser.add_argument(
+        "split_abstracts",
+        help=(
+            "split_abstracts"
+        )
+    )
+
     search_papers_parser = subparsers.add_parser(
         "search_papers",
         help=(
@@ -217,7 +270,9 @@ def main():
             args.log_file_path, json.dumps(response) + "\n", "a")
 
     elif args.command == "register_new_papers":
-        register_new_papers(args.source_files_path, args.result_file_path)
+        register_new_papers(
+            args.source_files_path, args.result_file_path, args.split_abstracts
+        )
 
     elif args.command == "search_papers":
         response = search_papers(
