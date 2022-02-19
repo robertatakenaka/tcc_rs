@@ -8,8 +8,8 @@ from mongoengine import (
     connect,
 )
 
-from rs import exceptions
-from rs import configuration
+from xlingual_papers_recommender import exceptions
+from xlingual_papers_recommender import configuration
 
 
 @retry(wait=wait_exponential(), stop=stop_after_attempt(10))

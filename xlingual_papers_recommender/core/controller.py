@@ -1,12 +1,12 @@
 import logging
 
-from rs.utils import response_utils
-from rs.core import tasks, connections
+from xlingual_papers_recommender.utils import response_utils
+from xlingual_papers_recommender.core import tasks, connections
 
-from rs.db import (
+from xlingual_papers_recommender.db import (
     db,
 )
-from rs.db.data_models import (
+from xlingual_papers_recommender.db.data_models import (
     Paper,
     Journal,
     PROC_STATUS_NA,

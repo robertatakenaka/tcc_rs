@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required
 # from snw.commons.pagination import paginate
 
 
-from rs import app as rs_app
+from xlingual_papers_recommender import app as rs_app
 
 
 def handle_response(response):

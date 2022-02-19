@@ -19,7 +19,7 @@ tests_require = [
 ]
 
 setuptools.setup(
-    name="rs",
+    name="xlingual_papers_recommender",
     version="0.1",
     author="Roberta Takenaka",
     author_email="takenaka.roberta.bw@gmail.com",
@@ -51,7 +51,7 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts":[
-            "rsapp=rs.app:main",
+            "xlingual_papers_recommender=xlingual_papers_recommender.app:main",
         ]
     },
 )

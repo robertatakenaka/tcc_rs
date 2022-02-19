@@ -3,7 +3,7 @@ import os
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import semantic_search
 
-from rs import configuration
+from xlingual_papers_recommender import configuration
 
 
 _MODELS_PATH = configuration.MODELS_PATH

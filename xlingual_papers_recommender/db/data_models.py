@@ -1,5 +1,5 @@
-from rs.configuration import handle_text_s
-from rs import exceptions
+from xlingual_papers_recommender.configuration import handle_text_s
+from xlingual_papers_recommender import exceptions
 
 from datetime import datetime
 

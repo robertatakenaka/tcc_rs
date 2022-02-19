@@ -1,7 +1,7 @@
-from rs.core import (
+from xlingual_papers_recommender.core import (
     semantics,
 )
-from rs import configuration
+from xlingual_papers_recommender import configuration
 
 
 def compare_papers(text, ids, texts):

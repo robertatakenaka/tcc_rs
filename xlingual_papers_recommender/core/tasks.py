@@ -2,10 +2,10 @@ import logging
 
 from celery import Celery
 
-from rs.db.data_models import PROC_STATUS_TODO
-from rs.utils import response_utils
-from rs.core import papers, connections
-from rs.configuration import (
+from xlingual_papers_recommender.db.data_models import PROC_STATUS_TODO
+from xlingual_papers_recommender.utils import response_utils
+from xlingual_papers_recommender.core import papers, connections
+from xlingual_papers_recommender.configuration import (
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND_URL,
     PAPERS_REGISTRATION_QUEUE,

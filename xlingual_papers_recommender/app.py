@@ -2,10 +2,10 @@ import argparse
 import json
 from copy import deepcopy
 
-from rs.core import (
+from xlingual_papers_recommender.core import (
     controller,
 )
-from rs.utils import files_utils
+from xlingual_papers_recommender.utils import files_utils
 
 
 def _register_new_papers(list_file_path, output_file_path):

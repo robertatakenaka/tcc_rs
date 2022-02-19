@@ -1,14 +1,14 @@
-from rs.db import (
+from xlingual_papers_recommender.db import (
     db,
 )
-from rs import exceptions
-from rs import configuration
-from rs.db.data_models import (
+from xlingual_papers_recommender import exceptions
+from xlingual_papers_recommender import configuration
+from xlingual_papers_recommender.db.data_models import (
     Paper,
     PROC_STATUS_NA,
     PROC_STATUS_SOURCE_REGISTERED,
 )
-from rs.utils import response_utils
+from xlingual_papers_recommender.utils import response_utils
 
 
 REFERENCE_ATTRIBUTES = (

@@ -1,4 +1,4 @@
-from rs.app import receive_new_paper
+from xlingual_papers_recommender.app import receive_new_paper
 
 from flask import url_for
 

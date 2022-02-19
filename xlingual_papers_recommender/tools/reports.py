@@ -1,8 +1,8 @@
 import argparse
 import csv
 
-from rs.db.data_models import Source, Paper
-from rs.db import db
+from xlingual_papers_recommender.db.data_models import Source, Paper
+from xlingual_papers_recommender.db import db
 
 
 def get_records(DataModelClass):

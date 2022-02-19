@@ -1,14 +1,14 @@
 from datetime import datetime
-from rs.configuration import (
+from xlingual_papers_recommender.configuration import (
     ITEMS_PER_PAGE, add_uri, get_years_range
 )
-from rs.utils import response_utils
-from rs import exceptions
-from rs.core import recommender
-from rs.db import (
+from xlingual_papers_recommender.utils import response_utils
+from xlingual_papers_recommender import exceptions
+from xlingual_papers_recommender.core import recommender
+from xlingual_papers_recommender.db import (
     db,
 )
-from rs.db.data_models import (
+from xlingual_papers_recommender.db.data_models import (
     Source,
     Paper,
     PROC_STATUS_TODO,
@@ -44,7 +44,7 @@ def search_sources(doi, pub_year, surname, organization_author, source,
 def search_sources_by_doi(doi):
     if not doi:
         raise exceptions.SourceSearchInputError(
-            "rs.db.search_sources_by_doi requires doi"
+            "xlingual_papers_recommender.db.search_sources_by_doi requires doi"
         )
     kwargs = {'doi': doi.upper()}
     return db.get_records(Source, **kwargs)
@@ -68,7 +68,7 @@ def search_sources_by_data(doi, pub_year, surname, organization_author, source,
     values = [doi, pub_year, surname, organization_author, source, journal, vol]
     if not any(values):
         raise exceptions.SourceSearchInputError(
-            "rs.db.search_sources requires at least one argument: "
+            "xlingual_papers_recommender.db.search_sources requires at least one argument: "
             "doi, pub_year, surname, organization_author, source, journal, vol"
         )
     values.extend([items_per_page, page, order_by])
