@@ -1,6 +1,6 @@
 import argparse
 import json
-from deepcopy import copy
+from copy import deepcopy
 
 from rs.core import (
     controller,
@@ -40,11 +40,14 @@ def _register_new_papers_split_abstracts(list_file_path, output_file_path):
                 for abstract in data['abstracts']:
 
                     try:
-                        abstract['pid'] = abstract['pid'] + "_" + abstract['lang']
-                        data_copy = copy(data)
+                        data_copy = deepcopy(data)
+                        pid = abstract.get("pid") or data_copy.get("pid")
+                        if not pid:
+                            raise ValueError("PID is None for %s" % json_file_path)
                         data_copy['abstracts'] = [abstract]
                         data_copy['paper_titles'] = []
                         data_copy['keywords'] = []
+                        data_copy['pid'] = pid + "_" + abstract['lang']
                         response = controller.create_paper(**data_copy)
                     except Exception as e:
                         response = {
