@@ -24,7 +24,7 @@ def get_records(DataModelClass):
 
 def _get_score_range(score):
     # 'score_gt_89',
-    # 'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_0-59',
+    # 'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_1_59',
     # 'score_none',
     if not score:
         return 'score_none'
@@ -36,13 +36,15 @@ def _get_score_range(score):
         return 'score_gt_69'
     if score > 0.59:
         return 'score_gt_59'
-    return 'score_gt_0-59'
+    if score < 0.01:
+        return 'score_lt_1'
+    return 'score_gt_1_59'
 
 
 def _eval_scores(connections):
     keys = (
         'score_gt_89',
-        'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_0-59',
+        'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_1_59', 'score_lt_1',
         'score_none',
     )
     d = {k: 0 for k in keys}
@@ -73,7 +75,8 @@ def create_paper_csv(output_csv_file_path):
         fieldnames = [
             'pid', 'refs', 'refs_with_doi', 'connections',
             'score_gt_89',
-            'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_0-59',
+            'score_gt_79', 'score_gt_69', 'score_gt_59', 'score_gt_1_59',
+            'score_lt_1',
             'score_none',
             'no_en', 'en_only', 'with_en'
         ]
@@ -89,6 +92,24 @@ def create_paper_csv(output_csv_file_path):
             data.update(_eval_scores(item.connections))
             data.update(_eval_langs(item.abstracts))
             writer.writerow(data)
+
+
+def create_connections_csv(output_csv_file_path):
+    with open(output_csv_file_path, 'w', newline='') as csvfile:
+        fieldnames = [
+            'pid', 'c_pid', 'c_score', 'c_score_none',
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for item in get_records(Paper):
+            for conn in item.connections:
+                data = {}
+                data['pid'] = item.pid
+                data['c_pid'] = len(conn.pid)
+                data['c_score'] = conn.score if conn.score else 0
+                data['c_score_none'] = 0 if conn.score else 1
+                writer.writerow(data)
 
 
 def _eval_reflinks_years(reflinks):
@@ -153,12 +174,58 @@ def main():
         )
     )
 
+    connections_report_parser = subparsers.add_parser(
+        "connections_report",
+        help=(
+            "Get connections report"
+        )
+    )
+    connections_report_parser.add_argument(
+        "output_file_path",
+        help=(
+            "/path/connections.csv"
+        )
+    )
+
+    all_reports_parser = subparsers.add_parser(
+        "all",
+        help=(
+            "Get all reports"
+        )
+    )
+    all_reports_parser.add_argument(
+        "papers_file_path",
+        help=(
+            "/path/papers.csv"
+        )
+    )
+    all_reports_parser.add_argument(
+        "souces_file_path",
+        help=(
+            "/path/souces.csv"
+        )
+    )
+    all_reports_parser.add_argument(
+        "connections_file_path",
+        help=(
+            "/path/connections.csv"
+        )
+    )
+
     args = parser.parse_args()
     if args.command == "papers_report":
         create_paper_csv(args.output_file_path)
 
     elif args.command == "sources_report":
         create_source_csv(args.output_file_path)
+
+    elif args.command == "connections_report":
+        create_connections_csv(args.output_csv_file_path)
+
+    elif args.command == "all":
+        create_paper_csv(args.papers_file_path)
+        create_source_csv(args.souces_file_path)
+        create_connections_csv(args.connections_file_path)
 
     else:
         parser.print_help()
