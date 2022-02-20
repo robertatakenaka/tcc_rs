@@ -143,7 +143,9 @@ def create_source_csv(output_csv_file_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Recommender System reports")
+    parser = argparse.ArgumentParser(
+        description="Crosslingual Papers Recommender Reports")
+
     subparsers = parser.add_subparsers(
         title="Commands", metavar="", dest="command",
     )
