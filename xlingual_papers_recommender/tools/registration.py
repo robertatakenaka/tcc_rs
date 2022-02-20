@@ -27,35 +27,20 @@ def _create_papers_from_json_files_split_abstracts(list_file_path, output_file_p
                 with open(json_file_path) as fpj:
                     data = fpj.read()
                 data = json.loads(data)
-                for abstract in data['abstracts']:
-
-                    try:
-                        data_copy = deepcopy(data)
-                        pid = abstract.get("pid") or data_copy.get("pid")
-                        if not pid:
-                            raise ValueError("PID is None for %s" % json_file_path)
-                        data_copy['abstracts'] = [abstract]
-                        data_copy['paper_titles'] = []
-                        data_copy['keywords'] = []
-                        data_copy['pid'] = pid + "_" + abstract['lang']
-                        response = controller.create_paper(**data_copy)
-                    except Exception as e:
-                        response = {
-                            "json_file_path": json_file_path,
-                            "exception": str(type(e)), "msg": str(e),
-                        }
-                    finally:
-                        files_utils.write_file(
-                            output_file_path, json.dumps(response) + "\n", "a")
-
             except Exception as e:
                 response = {
                     "json_file_path": json_file_path,
                     "exception": str(type(e)), "msg": str(e),
                 }
-            finally:
                 files_utils.write_file(
                     output_file_path, json.dumps(response) + "\n", "a")
+            else:
+                for abstract in data['abstracts']:
+                    response = _create_paper_from_abstract(
+                        abstract, data, json_file_path)
+
+                    files_utils.write_file(
+                        output_file_path, json.dumps(response) + "\n", "a")
 
 
 def _create_paper_from_json_file(json_file_path):
@@ -72,8 +57,9 @@ def _create_paper_from_json_file(json_file_path):
     return response
 
 
-def _create_paper_from_abstract(abstract, data_copy, json_file_path):
+def _create_paper_from_abstract(abstract, data, json_file_path):
     try:
+        data_copy = deepcopy(data)
         pid = abstract.get("pid") or data_copy.get("pid")
         if not pid:
             raise ValueError("PID is None for %s" % json_file_path)
