@@ -13,18 +13,8 @@ def _create_papers_from_json_files(list_file_path, output_file_path):
     with open(list_file_path) as fp:
         for json_file_path in fp.readlines():
             json_file_path = json_file_path.strip()
-            try:
-                with open(json_file_path) as fpj:
-                    data = fpj.read()
-                data = json.loads(data)
-                response = controller.create_paper(**data)
-            except Exception as e:
-                response = {
-                    "json_file_path": json_file_path,
-                    "exception": str(type(e)), "msg": str(e),
-                }
-            finally:
-                files_utils.write_file(
+            response = _create_paper_from_json_file(json_file_path)
+            files_utils.write_file(
                     output_file_path, json.dumps(response) + "\n", "a")
 
 
@@ -66,6 +56,20 @@ def _create_papers_from_json_files_split_abstracts(list_file_path, output_file_p
             finally:
                 files_utils.write_file(
                     output_file_path, json.dumps(response) + "\n", "a")
+
+
+def _create_paper_from_json_file(json_file_path):
+    try:
+        with open(json_file_path) as fp:
+            data = fp.read()
+        data = json.loads(data)
+        response = controller.create_paper(**data)
+    except Exception as e:
+        response = {
+            "json_file_path": json_file_path,
+            "exception": str(type(e)), "msg": str(e),
+        }
+    return response
 
 
 def create_papers_from_json_files(list_file_path, output_file_path, split_abstracts):
