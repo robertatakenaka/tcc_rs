@@ -72,6 +72,24 @@ def _create_paper_from_json_file(json_file_path):
     return response
 
 
+def _create_paper_from_abstract(abstract, data_copy, json_file_path):
+    try:
+        pid = abstract.get("pid") or data_copy.get("pid")
+        if not pid:
+            raise ValueError("PID is None for %s" % json_file_path)
+        data_copy['abstracts'] = [abstract]
+        data_copy['paper_titles'] = []
+        data_copy['keywords'] = []
+        data_copy['pid'] = pid + "_" + abstract['lang']
+        response = controller.create_paper(**data_copy)
+    except Exception as e:
+        response = {
+            "json_file_path": json_file_path,
+            "exception": str(type(e)), "msg": str(e),
+        }
+    return response
+
+
 def create_papers_from_json_files(list_file_path, output_file_path, split_abstracts):
     if split_abstracts == "split_abstracts":
         _create_papers_from_json_files_split_abstracts(list_file_path, output_file_path)
