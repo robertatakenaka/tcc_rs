@@ -8,7 +8,7 @@ from xlingual_papers_recommender.core import (
 from xlingual_papers_recommender.utils import files_utils
 
 
-def _register_new_papers(list_file_path, output_file_path):
+def _create_papers_from_json_files(list_file_path, output_file_path):
     files_utils.write_file(output_file_path, "")
     with open(list_file_path) as fp:
         for json_file_path in fp.readlines():
@@ -28,7 +28,7 @@ def _register_new_papers(list_file_path, output_file_path):
                     output_file_path, json.dumps(response) + "\n", "a")
 
 
-def _register_new_papers_split_abstracts(list_file_path, output_file_path):
+def _create_papers_from_json_files_split_abstracts(list_file_path, output_file_path):
     files_utils.write_file(output_file_path, "")
     with open(list_file_path) as fp:
         for json_file_path in fp.readlines():
@@ -68,11 +68,11 @@ def _register_new_papers_split_abstracts(list_file_path, output_file_path):
                     output_file_path, json.dumps(response) + "\n", "a")
 
 
-def register_new_papers(list_file_path, output_file_path, split_abstracts):
+def create_papers_from_json_files(list_file_path, output_file_path, split_abstracts):
     if split_abstracts == "split_abstracts":
-        _register_new_papers_split_abstracts(list_file_path, output_file_path)
+        _create_papers_from_json_files_split_abstracts(list_file_path, output_file_path)
     else:
-        _register_new_papers(list_file_path, output_file_path)
+        _create_papers_from_json_files(list_file_path, output_file_path)
 
 
 def _display_response(response, pretty=True):
@@ -90,26 +90,26 @@ def main():
         title="Commands", metavar="", dest="command",
     )
 
-    register_new_papers_parser = subparsers.add_parser(
-        "register_new_papers",
+    create_papers_from_json_files_parser = subparsers.add_parser(
+        "create_papers_from_json_files",
         help=(
             "Register a list of papers"
         )
     )
-    register_new_papers_parser.add_argument(
+    create_papers_from_json_files_parser.add_argument(
         "source_files_path",
         help=(
             "/path/documents.txt which contains a list of jsonl files"
         )
     )
-    register_new_papers_parser.add_argument(
+    create_papers_from_json_files_parser.add_argument(
         "result_file_path",
         help=(
             "/path/result.jsonl"
         )
     )
 
-    register_new_papers_parser.add_argument(
+    create_papers_from_json_files_parser.add_argument(
         "split_abstracts",
         help=(
             "split_abstracts"
@@ -118,8 +118,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "register_new_papers":
-        register_new_papers(
+    if args.command == "create_papers_from_json_files":
+        create_papers_from_json_files(
             args.source_files_path, args.result_file_path, args.split_abstracts
         )
 
