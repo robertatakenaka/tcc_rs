@@ -44,6 +44,7 @@ ITEMS_PER_PAGE = int(os.environ.get("ITEMS_PER_PAGE") or 10)
 RANGE_YEAR_DIFF = int(os.environ.get("RANGE_YEAR_DIFF") or 5)
 ####################################
 
+
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", 'amqp://guest@0.0.0.0:5672//')
 CELERY_RESULT_BACKEND_URL = os.environ.get("CELERY_RESULT_BACKEND_URL", 'rpc://')
 
@@ -51,6 +52,12 @@ PAPERS_REGISTRATION_QUEUE = os.environ.get("PAPERS_REGISTRATION_QUEUE", 'high_pr
 SOURCES_REGISTRATION_QUEUE = os.environ.get("SOURCES_REGISTRATION_QUEUE", 'default')
 LINKS_REGISTRATION_QUEUE = os.environ.get("LINKS_REGISTRATION_QUEUE", 'low_priority')
 
+PAPERS_GET_QUEUE = os.environ.get("PAPERS_GET_QUEUE", 'high_priority')
+GET_IDS_CONNECTED_BY_REFERENCES_QUEUE = os.environ.get("GET_IDS_CONNECTED_BY_REFERENCES_QUEUE", 'high_priority')
+GET_SEMANTIC_SEARCH_PARAMETERS_QUEUE = os.environ.get("GET_SEMANTIC_SEARCH_PARAMETERS_QUEUE", 'high_priority')
+COMPARE_PAPERS_QUEUE = os.environ.get("COMPARE_PAPERS_QUEUE", 'high_priority')
+REGISTER_PAPERS_CONNECTIONS_QUEUE = os.environ.get("REGISTER_PAPERS_CONNECTIONS_QUEUE", 'high_priority')
+ADD_CONNECTION_QUEUE = os.environ.get("ADD_CONNECTION_QUEUE", 'low_priority')
 ####################################
 
 COLLECTION_WEBSITE_URL_PATTERN = os.environ.get(

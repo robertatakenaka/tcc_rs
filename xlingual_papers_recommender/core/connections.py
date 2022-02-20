@@ -178,11 +178,39 @@ def add_referenced_by_to_source(ref, paper_id, todo_mark, pid, year, subject_are
         return response
 
 
-def _get_ids_connected_by_references(paper_id, subject_areas=None, from_year=None, to_year=None):
+def get_ids_connected_by_references(paper_id, subject_areas=None, from_year=None, to_year=None):
+    """
+    Get IDs of papers which are connected to a given paper (`paper_id`)
+    because they cite the same source
+
+    Parameters
+    ----------
+    paper_id: str
+        id of the given paper
+    subject_areas (optional): str list
+        filter by subject areas of the given paper
+    from_year (optional): str
+        used to select papers which publication year is
+        greater than or equal to `from_year`
+    to_year (optional): str
+        used to select papers which publication year is
+        lesser than or equal to `to_year`
+
+    Returns
+    -------
+    str list
+
+    Raises
+    ------
+    exceptions.ReferenceConnectionSearchInputError
+    """
     if not paper_id:
         raise exceptions.ReferenceConnectionSearchInputError(
-            "_get_ids_connected_by_references requires paper_id parameter"
+            "get_ids_connected_by_references requires paper_id parameter"
         )
+    # query parameters to get the sources
+    # which reflinks have these attributes values
+    # but it does not return only the matched reflinks
     params = dict(
         referenced_by=paper_id,
         reflinks__subject_areas__in=subject_areas,
@@ -194,23 +222,26 @@ def _get_ids_connected_by_references(paper_id, subject_areas=None, from_year=Non
         for k, v in params.items()
         if v
     }
+
+    # store the results as set in order not to get repetitions
     reflinks = set()
-    print(kwargs)
     for source in db.get_records(Source, **kwargs):
-        print(source._id)
+        # reflinks are the data of the connected papers
         t = source.get_reflinks_tuples()
-        print(t)
         reflinks.update(set(t))
 
+    # sort the results
     reflinks = sorted(reflinks)
-    print(len(reflinks))
+
+    # filter the reflinks which match with given parameters
     if any([subject_areas, from_year, to_year]):
-        print([subject_areas, from_year, to_year])
         return list(
-            _filter_results(
+            _filter_reflinks(
                 reflinks, paper_id, subject_areas, from_year, to_year
             )
         )
+
+    # returns without filtering
     return [
         item
         for item in reflinks
@@ -218,13 +249,26 @@ def _get_ids_connected_by_references(paper_id, subject_areas=None, from_year=Non
     ]
 
 
-def _filter_results(reflinks, paper_id, subject_areas, from_year, to_year):
+def _filter_reflinks(reflinks, paper_id, subject_areas, from_year, to_year):
+    """
+    Filter the reflinks which match with given subject areas, from_year, to_year
+    and returns papers ids generator
+    """
     for item in reflinks:
         if _valid_reflink(item, paper_id, subject_areas, from_year, to_year):
+            # paper id
             yield item[-1]
 
 
 def _valid_reflink(item, paper_id, subject_areas, from_year, to_year):
+    """
+    Filter the reflinks which match with given subject areas, from_year, to_year
+    and returns papers ids generator
+
+    Returns
+    -------
+    bool
+    """
     reflink_year, reflink_subject_areas, ign, reflink_paper_id = item
 
     if paper_id == reflink_paper_id:
@@ -243,7 +287,7 @@ def _valid_reflink(item, paper_id, subject_areas, from_year, to_year):
     return False
 
 
-def _get_semantic_search_parameters(selected_ids, paper_id=None):
+def get_semantic_search_parameters(selected_ids, paper_id=None):
     parameters = {}
     if selected_ids:
         # obtém os textos dos artigos
@@ -295,7 +339,7 @@ def get_paper_by_record_id(_id):
         print("???????")
 
 
-def _register_papers_connections(paper_id, evaluated, ids):
+def register_papers_connections(paper_id, evaluated, ids):
     """
     Register links
     """
@@ -313,38 +357,38 @@ def _register_papers_connections(paper_id, evaluated, ids):
     return registered_paper.get_connections()
 
 
-def find_and_create_connections(paper_id):
-    response = response_utils.create_response("find_and_create_connections")
-    paper = get_paper_by_record_id(paper_id)
-    if paper.proc_status != PROC_STATUS_TODO:
-        response_utils.add_result(
-            response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
-        return response
+# def find_and_create_connections(paper_id):
+#     response = response_utils.create_response("find_and_create_connections")
+#     paper = get_paper_by_record_id(paper_id)
+#     if paper.proc_status != PROC_STATUS_TODO:
+#         response_utils.add_result(
+#             response, "Nothing done: PROC_STATUS=%s" % paper.proc_status)
+#         return response
 
-    years_range = get_years_range(paper)
-    ids = _get_ids_connected_by_references(
-        paper_id, paper.subject_areas, *years_range)
-    if not ids:
-        response_utils.add_result(response, "There is no `ids` to make links")
-        return response
+#     years_range = get_years_range(paper)
+#     ids = get_ids_connected_by_references(
+#         paper_id, paper.subject_areas, *years_range)
+#     if not ids:
+#         response_utils.add_result(response, "There is no `ids` to make links")
+#         return response
 
-    parameters = _get_semantic_search_parameters(ids, paper_id)
-    if not parameters:
-        response_utils.add_result(
-            response, "There is no `parameters` to make links")
-        return response
+#     parameters = get_semantic_search_parameters(ids, paper_id)
+#     if not parameters:
+#         response_utils.add_result(
+#             response, "There is no `parameters` to make links")
+#         return response
 
-    papers = recommender.compare_papers(**parameters)
-    if not papers:
-        response_utils.add_result(response, "Not found paper links")
-        return response
+#     papers = recommender.compare_papers(**parameters)
+#     if not papers:
+#         response_utils.add_result(response, "Not found paper links")
+#         return response
 
-    result = _register_papers_connections(
-        paper_id,
-        papers['evaluated'],
-        papers['cut'],
-    )
-    return result
+#     result = register_papers_connections(
+#         paper_id,
+#         papers['evaluated'],
+#         papers['cut'],
+#     )
+#     return result
 
 
 ##############################################################################
@@ -352,7 +396,7 @@ def find_and_create_connections(paper_id):
 def search_papers(text, subject_areas, from_year, to_year):
     selected_ids = _select_papers_ids_by_text(
         text, subject_areas, from_year, to_year)
-    parameters = _get_semantic_search_parameters(selected_ids)
+    parameters = get_semantic_search_parameters(selected_ids)
 
     papers = recommender.compare_papers(
         text, parameters['ids'], parameters['texts']
@@ -408,7 +452,7 @@ def _select_papers_ids_by_word(
     )
     ids = set()
     for paper in registered_papers:
-        ids |= set(_get_ids_connected_by_references(
+        ids |= set(get_ids_connected_by_references(
                         paper._id, subject_areas,
                         from_year, to_year))
         ids |= set([paper._id])

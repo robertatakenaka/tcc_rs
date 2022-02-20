@@ -7,6 +7,7 @@ from xlingual_papers_recommender.db.data_models import (
     Paper,
     PROC_STATUS_NA,
     PROC_STATUS_SOURCE_REGISTERED,
+    PROC_STATUS_TODO,
 )
 from xlingual_papers_recommender.utils import response_utils
 
@@ -221,3 +222,22 @@ def _add_reference(paper, ref):
     if paper.recommendable == 'yes' and registered_ref.has_data_enough:
         paper.proc_status = PROC_STATUS_SOURCE_REGISTERED
         print(PROC_STATUS_SOURCE_REGISTERED)
+
+
+def get_parameters_to_get_ids_connected_by_references(paper_id):
+    paper = get_paper_by_record_id(paper_id)
+    if paper.proc_status == PROC_STATUS_TODO:
+        from_year, to_year = configuration.get_years_range(paper)
+        return {
+            "paper_id": paper_id,
+            "subject_areas": paper.subject_areas,
+            "from_year": from_year,
+            "to_year": to_year,
+        }
+    return None
+
+
+def add_connection_by_semantic_similarity(paper_id, connected_paper_id, score):
+    paper = get_paper_by_record_id(paper_id)
+    paper.add_connection(connected_paper_id, score)
+    paper.save()
