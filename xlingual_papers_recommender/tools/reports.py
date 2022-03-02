@@ -97,7 +97,8 @@ def create_paper_csv(output_csv_file_path):
 def create_connections_csv(output_csv_file_path):
     with open(output_csv_file_path, 'w', newline='') as csvfile:
         fieldnames = [
-            'pid', 'c_pid', 'c_score', 'c_score_none',
+            'a_pid', 'c_pid', 'real_a_pid', 'real_c_pid', 'same',
+            'c_score', 'c_score_none',
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -105,8 +106,11 @@ def create_connections_csv(output_csv_file_path):
         for item in get_records(Paper):
             for conn in item.connections:
                 data = {}
-                data['pid'] = item.pid
-                data['c_pid'] = len(conn.pid)
+                data['a_pid'] = item.pid
+                data['c_pid'] = conn.pid
+                data['real_a_pid'] = item.pid[:23]
+                data['real_c_pid'] = conn.pid[:23]
+                data['same'] = 1 if data['real_a_pid'] == data['real_c_pid'] else 0
                 data['c_score'] = conn.score if conn.score else 0
                 data['c_score_none'] = 0 if conn.score else 1
                 writer.writerow(data)
