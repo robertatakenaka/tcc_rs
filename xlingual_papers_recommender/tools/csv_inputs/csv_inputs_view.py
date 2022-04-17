@@ -21,13 +21,15 @@ def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path):
         reader = csv.DictReader(csvfile, fieldnames=fieldnames)
         for row in reader:
             try:
-                ret = tasks.ingress_item(row)
+                row['name'] = data_label
+                ret = tasks.register_row(row)
             except ValueError:
                 ret = row
             with open(output_file_path, "a") as fp:
                 try:
                     s = json.dumps(ret)
-                except:
+                except Exception as e:
+                    print(e)
                     print(ret)
                 else:
                     fp.write(f"{s}\n")
@@ -49,7 +51,6 @@ def main():
     )
     csv_parser.add_argument(
         'fieldnames',
-        choices=["abstracts", "keywords", "titles", "article", "references"],
         help='fieldnames'
     )
     csv_parser.add_argument(
@@ -57,8 +58,8 @@ def main():
         help='input_csv_file_path'
     )
     csv_parser.add_argument(
-        'output_folder_path',
-        help='output_folder_path'
+        'output_file_path',
+        help='output_file_path'
     )
 
     args = parser.parse_args()
@@ -66,9 +67,9 @@ def main():
     if args.command == 'csv':
         ingress_csv(
             args.item_name,
-            args.fieldnames,
+            args.fieldnames.split(","),
             args.input_csv_file_path,
-            args.output_folder_path,
+            args.output_file_path,
         )
     else:
         parser.print_help()

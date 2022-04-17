@@ -1,3 +1,5 @@
+from html import unescape
+
 from xlingual_papers_recommender.db import (
     db,
 )
@@ -12,7 +14,7 @@ def get_record_by_pid(pid, lang, name):
     try:
         return db.get_records(
             CSVRow, **{'pid': pid, 'lang': lang, 'name': name})[0]
-    except IndexError:
+    except IndexError as e:
         raise csv_inputs_exceptions.CSVRowNotFoundError(
             "%s %s %s %s" % (e, pid, lang, name)
         )
@@ -22,12 +24,25 @@ def get_record_by_pid(pid, lang, name):
         )
 
 
+def fix_row(row):
+    if len(row["pid"]) == 28:
+        row["ref_pid"] = row["pid"]
+        row["pid"] = row["pid"][:23]
+        row["lang"] = ''
+    for k, v in row.items():
+        try:
+            row[k] = unescape(v)
+        except:
+            pass
+    return row
+
+
 def get_fields(row):
     try:
         pid = row["pid"]
-        lang = row["lang"]
         name = row["name"]
-    except KeyError:
+        lang = row["lang"]
+    except KeyError as e:
         raise csv_inputs_exceptions.RequiredInputDataNotFoundError(
             "Required pid, lang, name: %s %s" % (e, row)
         )
@@ -37,6 +52,7 @@ def get_fields(row):
 def register_row(row):
     response = response_utils.create_response("create_row")
     try:
+        row = fix_row(row)
         pid, lang, name = get_fields(row)
 
         try:
@@ -44,7 +60,7 @@ def register_row(row):
         except csv_inputs_exceptions.CSVRowNotFoundError:
             csv_row = CSVRow()
         registered_row = _register_row(csv_row, pid, lang, name, row)
-        response['registered_row'] = registered_row._id
+        response['registered_row'] = row
     except Exception as e:
         # mongoengine.errors.NotUniqueError
         # FIXME error code depende da excecao
