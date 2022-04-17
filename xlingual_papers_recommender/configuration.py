@@ -58,6 +58,9 @@ GET_SEMANTIC_SEARCH_PARAMETERS_QUEUE = os.environ.get("GET_SEMANTIC_SEARCH_PARAM
 COMPARE_PAPERS_QUEUE = os.environ.get("COMPARE_PAPERS_QUEUE", 'high_priority')
 REGISTER_PAPERS_CONNECTIONS_QUEUE = os.environ.get("REGISTER_PAPERS_CONNECTIONS_QUEUE", 'high_priority')
 ADD_CONNECTION_QUEUE = os.environ.get("ADD_CONNECTION_QUEUE", 'low_priority')
+
+REGISTER_ROW_QUEUE = os.environ.get("REGISTER_ROW_QUEUE", 'default')
+
 ####################################
 
 COLLECTION_WEBSITE_URL_PATTERN = os.environ.get(
