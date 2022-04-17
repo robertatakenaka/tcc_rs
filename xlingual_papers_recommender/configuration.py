@@ -42,6 +42,8 @@ if not DATABASE_CONNECT_URL:
 WAIT_SOURCES_REGISTRATIONS = int(os.environ.get("WAIT_SOURCES_REGISTRATIONS") or 1)
 ITEMS_PER_PAGE = int(os.environ.get("ITEMS_PER_PAGE") or 10)
 RANGE_YEAR_DIFF = int(os.environ.get("RANGE_YEAR_DIFF") or 5)
+
+SOURCE_COLLECTION_NAME = os.environ.get("SOURCE_COLLECTION_NAME") or 'LeanSource'
 ####################################
 
 

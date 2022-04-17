@@ -1,6 +1,7 @@
 from datetime import datetime
 from xlingual_papers_recommender.configuration import (
-    ITEMS_PER_PAGE, add_uri, get_years_range
+    ITEMS_PER_PAGE, add_uri, get_years_range,
+    SOURCE_COLLECTION_NAME,
 )
 from xlingual_papers_recommender.utils import response_utils
 from xlingual_papers_recommender import exceptions
@@ -10,11 +11,15 @@ from xlingual_papers_recommender.db import (
 )
 from xlingual_papers_recommender.db.data_models import (
     Source,
+    LeanSource,
     Paper,
     PROC_STATUS_TODO,
     PROC_STATUS_DONE,
 )
 
+SOURCE_COLLECTION = (
+    LeanSource if SOURCE_COLLECTION_NAME == "LeanSource" else Source
+)
 
 # def _db_connect(host):
 #     try:
@@ -47,12 +52,29 @@ def search_sources_by_doi(doi):
             "xlingual_papers_recommender.db.search_sources_by_doi requires doi"
         )
     kwargs = {'doi': doi.upper()}
-    return db.get_records(Source, **kwargs)
+    return db.get_records(SOURCE_COLLECTION, **kwargs)
 
 
 def search_sources_by_data(doi, pub_year, surname, organization_author, source,
                            journal, vol,
                            items_per_page, page, order_by):
+    if SOURCE_COLLECTION_NAME == "LeanSource":
+        return _search_sources_by_data_in_lean_source(
+            doi, pub_year, surname, organization_author,
+            items_per_page, page, order_by
+        )
+
+    return _search_sources_by_data_default_source(
+        doi, pub_year, surname, organization_author, source,
+        journal, vol,
+        items_per_page, page, order_by
+    )
+
+
+def _search_sources_by_data_default_source(
+        doi, pub_year, surname, organization_author, source,
+        journal, vol,
+        items_per_page, page, order_by):
     try:
         pub_year = int(pub_year)
         if len(str(pub_year)) != 4:
@@ -85,6 +107,43 @@ def search_sources_by_data(doi, pub_year, surname, organization_author, source,
             except AttributeError:
                 kwargs[k] = v
     return db.get_records(Source, **kwargs)
+
+
+def _search_sources_by_data_in_lean_source(
+        doi, pub_year, surname, organization_author,
+        items_per_page, page, order_by):
+    try:
+        pub_year = int(pub_year)
+        if len(str(pub_year)) != 4:
+            raise ValueError("pub_year has not 4 digits")
+        max_value = datetime.now().year + 1
+        if pub_year > max_value:
+            raise ValueError("pub_year must be <= %i" % max_value)
+    except (TypeError, ValueError) as e:
+        raise exceptions.SourceSearchInputError(
+            "Error: %s. Value of `pub_year`=%s. It must be a number with 4 digits. " % (e, pub_year)
+        )
+
+    values = [doi, pub_year, surname, organization_author, source, journal, vol]
+    if not any(values):
+        raise exceptions.SourceSearchInputError(
+            "xlingual_papers_recommender.db.search_sources requires at least one argument: "
+            "doi, pub_year, surname, organization_author, source, journal, vol"
+        )
+    values.extend([items_per_page, page, order_by])
+    field_names = (
+        'doi', 'pub_year', 'surname', 'organization_author', 'source',
+        'journal', 'vol', 'items_per_page', 'page', 'order_by',
+    )
+
+    kwargs = {}
+    for k, v in zip(field_names, values):
+        if v:
+            try:
+                kwargs[k] = v.upper()
+            except AttributeError:
+                kwargs[k] = v
+    return db.get_records(SOURCE_COLLECTION, **kwargs)
 
 
 def create_source(

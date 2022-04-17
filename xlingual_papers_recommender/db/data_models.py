@@ -483,6 +483,69 @@ class Source(Document):
         return super(Source, self).save(*args, **kwargs)
 
 
+class LeanSource(Document):
+    pub_year = IntField(required=True)
+    surname = StringField()
+    organization_author = StringField()
+    doi = StringField()
+    referenced_by = ListField(StringField())
+    reflinks = EmbeddedDocumentListField(RefLink)
+
+    # datas deste registro
+    created = DateTimeField()
+    updated = DateTimeField()
+
+    meta = {
+        'collection': 'rs_lean_source',
+        'indexes': [
+            'pub_year',
+            'surname',
+            'organization_author',
+            'doi',
+            'referenced_by',
+        ]
+    }
+
+    def add_referenced_by(self, paper_id):
+        str_paper_id = str(paper_id)
+        if not self.referenced_by:
+            self.referenced_by = []
+        if str_paper_id not in self.referenced_by:
+            self.referenced_by.append(str_paper_id)
+
+    def add_reflink(self, paper_id, pid, year, subject_areas):
+        if not self.reflinks:
+            self.reflinks = []
+        reflink = RefLink()
+        reflink.paper_id = str(paper_id)
+        reflink.pid = pid
+        reflink.year = int(year)
+        reflink.subject_areas = subject_areas
+        self.reflinks.append(reflink)
+
+    def get_reflinks_tuples(self):
+        return [reflink.as_tuple() for reflink in self.reflinks]
+
+    @property
+    def _id(self):
+        return str(self.id)
+
+    def to_upper(self, name):
+        v = getattr(self, name)
+        if v and isinstance(v, str):
+            setattr(self, name, v.upper())
+
+    def save(self, *args, **kwargs):
+        if not self.created:
+            self.created = utcnow()
+        self.updated = utcnow()
+        self.doi = self.doi and self.doi.upper()
+        self.to_upper('pub_year')
+        self.to_upper('surname')
+        self.to_upper('organization_author')
+        return super(LeanSource, self).save(*args, **kwargs)
+
+
 class Paper(Document):
     pid = StringField(unique=True, required=True)
     uri = EmbeddedDocumentListField(URI)
