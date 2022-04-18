@@ -3,28 +3,45 @@ from html import unescape
 from xlingual_papers_recommender.db import (
     db,
 )
-from xlingual_papers_recommender import configuration
-from xlingual_papers_recommender.tools.csv_inputs.csv_inputs_models import CSVRow
-from xlingual_papers_recommender.tools.csv_inputs import csv_inputs_exceptions
-
 from xlingual_papers_recommender.utils import response_utils
+from xlingual_papers_recommender.tools.csv_inputs.csv_inputs_models import (
+    CSVRow,
+    PaperJSON,
+)
+from xlingual_papers_recommender.tools.csv_inputs import (
+    csv_inputs_exceptions,
+    csv_merger,
+)
 
 
-def get_record_by_pid(pid, lang, name):
+def _get_cvs_row_records(pid):
+    try:
+        return db.get_records(CSVRow, **{'pid': pid})
+    except IndexError as e:
+        raise csv_inputs_exceptions.CSVRowNotFoundError(
+            "Not found cvs_row: %s %s" % (e, pid)
+        )
+    except Exception as e:
+        raise csv_inputs_exceptions.CSVRowNotFoundUnexpectedError(
+            "Unexpected error: %s %s" % (e, pid)
+        )
+
+
+def _get_csv_row(pid, lang, name):
     try:
         return db.get_records(
             CSVRow, **{'pid': pid, 'lang': lang, 'name': name})[0]
     except IndexError as e:
         raise csv_inputs_exceptions.CSVRowNotFoundError(
-            "%s %s %s %s" % (e, pid, lang, name)
+            "Not found cvs_row: %s %s %s %s" % (e, pid, lang, name)
         )
     except Exception as e:
         raise csv_inputs_exceptions.CSVRowNotFoundUnexpectedError(
-            "%s %s %s %s" % (e, pid, lang, name)
+            "Unexpected error: %s %s %s %s" % (e, pid, lang, name)
         )
 
 
-def fix_row(row):
+def _fix_row(row):
     if len(row["pid"]) == 28:
         row["ref_pid"] = row["pid"]
         row["pid"] = row["pid"][:23]
@@ -37,7 +54,7 @@ def fix_row(row):
     return row
 
 
-def get_fields(row):
+def _get_fields(row):
     try:
         pid = row["pid"]
         name = row["name"]
@@ -50,17 +67,20 @@ def get_fields(row):
 
 
 def register_row(row):
+    """
+    Register "csv_row"
+    """
     response = response_utils.create_response("create_row")
     try:
-        row = fix_row(row)
-        pid, lang, name = get_fields(row)
+        row = _fix_row(row)
+        pid, lang, name = _get_fields(row)
 
         try:
-            csv_row = get_record_by_pid(pid, lang, name)
+            csv_row = _get_csv_row(pid, lang, name)
         except csv_inputs_exceptions.CSVRowNotFoundError:
             csv_row = CSVRow()
-        registered_row = _register_row(csv_row, pid, lang, name, row)
-        response['registered_row'] = row
+        registered = _register_row(csv_row, pid, lang, name, row)
+        response['registered'] = registered.as_dict()
     except Exception as e:
         # mongoengine.errors.NotUniqueError
         # FIXME error code depende da excecao
@@ -76,3 +96,72 @@ def _register_row(csv_row, pid, lang, name, row):
     csv_row.data = row
     csv_row.save()
     return csv_row
+
+
+####################################
+
+def merge_csv(pid):
+    """
+    Register paper data as JSON
+    """
+    response = response_utils.create_response("merge_csv")
+    try:
+        response['merged'] = _merge_csv(pid)
+    except (
+            csv_inputs_exceptions.CSVRowNotFoundError,
+            csv_inputs_exceptions.CSVRowNotFoundUnexpectedError,
+            Exception,
+            ) as e:
+        response_utils.add_error(response, "Unable to register paper data as JSON", 400)
+        response_utils.add_exception(response, e)
+    return response
+
+
+def _merge_csv(pid):
+    """
+    Merge cvs_row records, creating a JSON
+    """
+    records = _get_cvs_row_records(pid)
+    return csv_merger.merge_data(pid, records)
+
+
+def register_paper_data_as_json(input_data):
+    """
+    Register paper data as JSON
+    """
+    response = response_utils.create_response("register_paper_data_as_json")
+    try:
+        pid = input_data["pid"]
+        try:
+            paper_json = get_registered_paper_json(pid)
+        except csv_inputs_exceptions.PaperJsonNotFoundError:
+            paper_json = PaperJSON()
+        registered = _register_paper_data_as_json(
+            paper_json, pid, input_data)
+        response['registered'] = registered.as_dict()
+    except Exception as e:
+        # mongoengine.errors.NotUniqueError
+        # FIXME error code depende da excecao
+        response_utils.add_error(response, "Unable to register paper data as JSON", 400)
+        response_utils.add_exception(response, e)
+    return response
+
+
+def _register_paper_data_as_json(paper_json, pid, input_data):
+    paper_json.pid = pid
+    paper_json.data = input_data
+    paper_json.save()
+    return paper_json
+
+
+def get_registered_paper_json(pid):
+    try:
+        return db.get_records(PaperJSON, **{'pid': pid})[0]
+    except IndexError as e:
+        raise csv_inputs_exceptions.PaperJsonNotFoundError(
+            "Not found cvs_row: %s %s" % (e, pid)
+        )
+    except Exception as e:
+        raise csv_inputs_exceptions.PaperJsonNotFoundUnexpectedError(
+            "Unexpected error: %s %s" % (e, pid)
+        )

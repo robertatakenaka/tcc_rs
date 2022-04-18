@@ -17,7 +17,12 @@ from xlingual_papers_recommender.configuration import (
     COMPARE_PAPERS_QUEUE,
     REGISTER_PAPERS_CONNECTIONS_QUEUE,
     ADD_CONNECTION_QUEUE,
+    REGISTER_ROW_QUEUE,
+    JOIN_CSV_QUEUE,
+    REGISTER_JSON_QUEUE,
+    REGISTER_PAPER_QUEUE,
 )
+from xlingual_papers_recommender.tools.csv_inputs import csv_inputs_controller
 
 
 app = Celery('tasks', backend=CELERY_RESULT_BACKEND_URL, broker=CELERY_BROKER_URL)
@@ -54,7 +59,6 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
                  references, extra,
                  get_result=None,
                  ):
-    print("call task_create_paper")
     res = task_create_paper.apply_async(
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
@@ -80,7 +84,7 @@ def task_create_paper(
         keywords,
         references, extra,
         ):
-    print("task_create_paper")
+    # # print("task_create_paper")
     return papers.create_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
@@ -103,7 +107,7 @@ def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
                  references, extra,
                  get_result=None,
                  ):
-    print("call task_update_paper")
+    # print("call task_update_paper")
     res = task_update_paper.apply_async(
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
@@ -131,7 +135,7 @@ def task_update_paper(
         keywords,
         references, extra,
         ):
-    print("task_update_paper")
+    # # print("task_update_paper")
     return papers.update_paper(
         _id,
         network_collection, pid, main_lang, doi, pub_year,
@@ -147,7 +151,7 @@ def task_update_paper(
 ###########################################
 def add_referenced_by_to_source(ref, paper_id, pid, year, subject_areas, get_result=None):
     MARK = PROC_STATUS_TODO
-    print("call task_add_referenced_by_to_source", paper_id)
+    # print("call task_add_referenced_by_to_source", paper_id)
     res = task_add_referenced_by_to_source.apply_async(
         queue=SOURCES_REGISTRATION_QUEUE,
         args=(ref, paper_id, MARK, pid, year, subject_areas)
@@ -157,14 +161,14 @@ def add_referenced_by_to_source(ref, paper_id, pid, year, subject_areas, get_res
 
 @app.task()
 def task_add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas):
-    print("task_add_referenced_by_to_source")
+    # # print("task_add_referenced_by_to_source")
     return connections.add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_areas)
 
 
 ###########################################
 
 # def find_and_create_connections(paper_id, get_result=None):
-#     print("find_and_create_connections", paper_id)
+#     # print("find_and_create_connections", paper_id)
 #     res = task_find_and_create_connections.apply_async(
 #         queue=LINKS_REGISTRATION_QUEUE, args=(paper_id, ))
 #     return _handle_result(
@@ -173,7 +177,7 @@ def task_add_referenced_by_to_source(ref, paper_id, MARK, pid, year, subject_are
 
 # @app.task()
 # def task_find_and_create_connections(paper_id):
-#     print("task.task_find_and_create_connections")
+#     # # print("task.task_find_and_create_connections")
 #     return connections.find_and_create_connections(paper_id)
 
 
@@ -223,7 +227,7 @@ def find_and_create_connections(paper_id, get_result=None):
 
 
 def add_connection_by_semantic_similarity(paper_id, connected_paper_id, score, get_result=None):
-    print("add_connection_by_semantic_similarity", paper_id)
+    # print("add_connection_by_semantic_similarity", paper_id)
     res = task_add_connection_by_semantic_similarity.apply_async(
         queue=ADD_CONNECTION_QUEUE,
         args=(paper_id, connected_paper_id, score))
@@ -233,7 +237,7 @@ def add_connection_by_semantic_similarity(paper_id, connected_paper_id, score, g
 
 @app.task()
 def task_add_connection_by_semantic_similarity(paper_id, connected_paper_id, score):
-    print("task.task_add_connection_by_semantic_similarity")
+    # # print("task.task_add_connection_by_semantic_similarity")
     return papers.add_connection_by_semantic_similarity(
         paper_id, connected_paper_id, score)
 
@@ -242,7 +246,7 @@ def task_add_connection_by_semantic_similarity(paper_id, connected_paper_id, sco
 
 
 def register_papers_connections(paper_id, evaluated_papers, cut_papers, get_result=None):
-    print("register_papers_connections", paper_id)
+    # print("register_papers_connections", paper_id)
     res = task_register_papers_connections.apply_async(
         queue=REGISTER_PAPERS_CONNECTIONS_QUEUE,
         args=(paper_id, evaluated_papers, cut_papers))
@@ -252,14 +256,14 @@ def register_papers_connections(paper_id, evaluated_papers, cut_papers, get_resu
 
 @app.task()
 def task_register_papers_connections(paper_id, evaluated_papers, cut_papers):
-    print("task.task_register_papers_connections")
+    # # print("task.task_register_papers_connections")
     return connections.register_papers_connections(
         paper_id, evaluated_papers, cut_papers)
 ###########################################
 
 
 def get_parameters_to_get_ids_connected_by_references(paper_id, get_result=None):
-    print("get_parameters_to_get_ids_connected_by_references", paper_id)
+    # print("get_parameters_to_get_ids_connected_by_references", paper_id)
     res = task_get_parameters_to_get_ids_connected_by_references.apply_async(
         queue=PAPERS_GET_QUEUE, args=(paper_id, ))
     return _handle_result(
@@ -269,7 +273,7 @@ def get_parameters_to_get_ids_connected_by_references(paper_id, get_result=None)
 
 @app.task()
 def task_get_parameters_to_get_ids_connected_by_references(paper_id):
-    print("task.task_get_parameters_to_get_ids_connected_by_references")
+    # # print("task.task_get_parameters_to_get_ids_connected_by_references")
     return papers.get_parameters_to_get_ids_connected_by_references(paper_id)
 
 ###########################################
@@ -278,7 +282,7 @@ def task_get_parameters_to_get_ids_connected_by_references(paper_id):
 def get_ids_connected_by_references(paper_id, subject_areas=None,
                                     from_year=None, to_year=None,
                                     get_result=None):
-    print("get_ids_connected_by_references", paper_id)
+    # print("get_ids_connected_by_references", paper_id)
     res = task_get_ids_connected_by_references.apply_async(
         queue=GET_IDS_CONNECTED_BY_REFERENCES_QUEUE,
         args=(paper_id, subject_areas, from_year, to_year, )
@@ -290,7 +294,7 @@ def get_ids_connected_by_references(paper_id, subject_areas=None,
 @app.task()
 def task_get_ids_connected_by_references(paper_id, subject_areas=None,
                                          from_year=None, to_year=None):
-    print("task.task_get_ids_connected_by_references")
+    # # print("task.task_get_ids_connected_by_references")
     return connections.get_ids_connected_by_references(
         paper_id, subject_areas, from_year, to_year)
 
@@ -298,7 +302,7 @@ def task_get_ids_connected_by_references(paper_id, subject_areas=None,
 
 
 def get_semantic_search_parameters(ids, paper_id, get_result=None):
-    print("get_semantic_search_parameters", paper_id)
+    # print("get_semantic_search_parameters", paper_id)
     res = task_get_semantic_search_parameters.apply_async(
         queue=GET_SEMANTIC_SEARCH_PARAMETERS_QUEUE,
         args=(ids, paper_id)
@@ -309,7 +313,7 @@ def get_semantic_search_parameters(ids, paper_id, get_result=None):
 
 @app.task()
 def task_get_semantic_search_parameters(ids, paper_id):
-    print("task.task_get_semantic_search_parameters")
+    # # print("task.task_get_semantic_search_parameters")
     return connections.get_semantic_search_parameters(ids, paper_id)
 
 
@@ -317,7 +321,7 @@ def task_get_semantic_search_parameters(ids, paper_id):
 
 
 def compare_papers(text, ids, texts, get_result=None):
-    print("compare_papers")
+    # print("compare_papers")
     res = task_compare_papers.apply_async(
         queue=COMPARE_PAPERS_QUEUE,
         args=(text, ids, texts)
@@ -328,6 +332,83 @@ def compare_papers(text, ids, texts, get_result=None):
 
 @app.task()
 def task_compare_papers(text, ids, texts):
-    print("task.task_compare_papers")
+    # # print("task.task_compare_papers")
     return recommender.compare_papers(text, ids, texts)
 
+
+###########################################
+
+def register_csv_row_data(row, get_result=None):
+    res = task_register_csv_row_data.apply_async(
+        queue=REGISTER_ROW_QUEUE,
+        args=(row, ),
+    )
+    return _handle_result("task_register_csv_row_data", res, get_result)
+
+
+@app.task()
+def task_register_csv_row_data(row):
+    return csv_inputs_controller.register_row(row)
+
+
+###########################################
+
+def csv_rows_to_json(pid, call_create_paper=False, get_result=None):
+    response = _merge_csv(pid, get_result=True)
+
+    try:
+        paper_data = response["merged"]
+    except KeyError:
+        # nao obteve os dados
+        return response
+
+    response = _register_json(paper_data, get_result)
+
+    if call_create_paper:
+        paper_data["get_result"] = get_result
+        response = create_paper(**paper_data)
+
+    return response
+
+
+def _merge_csv(pid, get_result=None):
+    res = task__merge_csv.apply_async(
+        queue=JOIN_CSV_QUEUE,
+        args=(pid, ),
+    )
+    return _handle_result("task__merge_csv", res, get_result)
+
+
+@app.task()
+def task__merge_csv(pid):
+    return csv_inputs_controller.merge_csv(pid)
+
+
+def _register_json(paper_json, get_result=None):
+    res = task__register_json.apply_async(
+        queue=REGISTER_JSON_QUEUE,
+        args=(paper_json, ),
+    )
+    return _handle_result("task__register_json", res, get_result)
+
+
+@app.task()
+def task__register_json(paper_json):
+    return csv_inputs_controller.register_paper_data_as_json(paper_json)
+
+
+###########################################
+
+def json_to_paper(pid, get_result=None):
+    res = task_json_to_paper.apply_async(
+        queue=REGISTER_PAPER_QUEUE,
+        args=(pid, ),
+    )
+    return _handle_result("task_json_to_paper", res, get_result)
+
+
+@app.task()
+def task_json_to_paper(pid):
+    paper_json = csv_inputs_controller.get_registered_paper_json(pid)
+    paper_data = paper_json.data
+    return create_paper(**paper_data)

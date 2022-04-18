@@ -33,8 +33,44 @@ class CSVRow(Document):
         ]
     }
 
+    def as_dict(self):
+        return dict(
+            pid=self.pid,
+            lang=self.lang,
+            name=self.name,
+            data=self.data,
+        )
+
     def save(self, *args, **kwargs):
         if not self.created:
             self.created = utcnow()
         self.updated = utcnow()
         return super(CSVRow, self).save(*args, **kwargs)
+
+
+class PaperJSON(Document):
+    pid = StringField()
+    data = DictField()
+
+    # datas deste registro
+    created = DateTimeField()
+    updated = DateTimeField()
+
+    meta = {
+        'collection': 'paper_as_json',
+        'indexes': [
+            'pid',
+        ]
+    }
+
+    def as_dict(self):
+        return dict(
+            pid=self.pid,
+            data=self.data,
+        )
+
+    def save(self, *args, **kwargs):
+        if not self.created:
+            self.created = utcnow()
+        self.updated = utcnow()
+        return super(PaperJSON, self).save(*args, **kwargs)
