@@ -58,7 +58,7 @@ def _get_fields(row):
     try:
         pid = row["pid"]
         name = row["name"]
-        lang = row["lang"]
+        lang = row.get("lang") or row.get("ref_pid")
     except KeyError as e:
         raise csv_inputs_exceptions.RequiredInputDataNotFoundError(
             "Required pid, lang, name: %s %s" % (e, row)

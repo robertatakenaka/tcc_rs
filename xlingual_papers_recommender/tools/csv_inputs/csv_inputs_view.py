@@ -25,6 +25,10 @@ def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, s
         reader = csv.DictReader(csvfile, fieldnames=fieldnames)
         for row in reader:
             try:
+                if len(row["pid"]) == 28:
+                    row["ref_pid"] = row["pid"]
+                    row["pid"] = row["pid"][:23]
+                    row["lang"] = ''
                 row['name'] = data_label
                 row['skip_update'] = skip_update
                 if not inclusion_list or row['pid'] in inclusion_list:
