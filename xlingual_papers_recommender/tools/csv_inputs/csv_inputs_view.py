@@ -7,12 +7,16 @@ from datetime import datetime
 from xlingual_papers_recommender.core import tasks
 
 
-def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, skip_update):
+def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, skip_update, inclusion_file_path):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
     do artigo correspondente
     """
+    inclusion_list = []
+    if inclusion_file_path:
+        with open(inclusion_file_path, "r") as fp:
+            inclusion_list = [item.strip() for item in fp.readlines()]
 
     with open(output_file_path, "w") as fp:
         fp.write("")
@@ -23,7 +27,10 @@ def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, s
             try:
                 row['name'] = data_label
                 row['skip_update'] = skip_update
-                ret = tasks.register_csv_row_data(row)
+                if not inclusion_list or row['pid'] in inclusion_list:
+                    ret = tasks.register_csv_row_data(row)
+                else:
+                    ret = {"pid": row['pid'], "skip_ingress": True}
             except KeyError as e:
                 ret = {"error": "Missing pid %s" % str(row)}
             except ValueError as e:
@@ -139,6 +146,11 @@ def main():
         default=False,
         help='skip_update'
     )
+    csv_parser.add_argument(
+        '--inclusion_file_path',
+        default=None,
+        help='inclusion_file_path'
+    )
 
     csv2json_parser = subparsers.add_parser(
         'csv2json',
@@ -189,6 +201,7 @@ def main():
             args.input_csv_file_path,
             args.output_file_path,
             args.skip_update,
+            args.inclusion_file_path,
         )
     elif args.command == 'csv2json':
         csv_rows_to_json(
