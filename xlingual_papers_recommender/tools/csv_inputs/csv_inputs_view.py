@@ -7,7 +7,7 @@ from datetime import datetime
 from xlingual_papers_recommender.core import tasks
 
 
-def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path):
+def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, skip_update):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
@@ -22,6 +22,7 @@ def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path):
         for row in reader:
             try:
                 row['name'] = data_label
+                row['skip_update'] = skip_update
                 ret = tasks.register_csv_row_data(row)
             except KeyError as e:
                 ret = {"error": "Missing pid %s" % str(row)}
@@ -132,6 +133,12 @@ def main():
         'output_file_path',
         help='output_file_path'
     )
+    csv_parser.add_argument(
+        '--skip_update',
+        type=bool,
+        default=False,
+        help='skip_update'
+    )
 
     csv2json_parser = subparsers.add_parser(
         'csv2json',
@@ -181,6 +188,7 @@ def main():
             args.fieldnames.split(","),
             args.input_csv_file_path,
             args.output_file_path,
+            args.skip_update,
         )
     elif args.command == 'csv2json':
         csv_rows_to_json(

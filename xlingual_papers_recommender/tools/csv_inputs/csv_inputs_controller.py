@@ -75,8 +75,13 @@ def register_row(row):
         row = _fix_row(row)
         pid, lang, name = _get_fields(row)
 
+        response['params'] = {'pid': pid, 'skip_update': row.get("skip_update")}
+
         try:
             csv_row = _get_csv_row(pid, lang, name)
+            if row.get("skip_update"):
+                # item is already registered then skip update
+                return response
         except csv_inputs_exceptions.CSVRowNotFoundError:
             csv_row = CSVRow()
         registered = _register_row(csv_row, pid, lang, name, row)
