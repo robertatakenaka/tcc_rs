@@ -31,7 +31,7 @@ def merge_data(pid, records):
         record_data = record["data"]
 
         data["network_collection"] = (
-            data.get("network_collection") or record_data.get("collection")
+            data.get("network_collection") or record_data.get("collection") or record_data.get("collection.x")
         )
         data["main_lang"] = (
             data.get("main_lang") or record_data.get("lang")
@@ -49,7 +49,7 @@ def merge_data(pid, records):
 
         if record["name"] in ("paper_titles", "abstracts", "keywords"):
             item = dict(
-                text=record_data["text"],
+                text=record_data.get("original"),
                 lang=record_data["lang"],
             )
             data = add_item(data, record_data["name"], item)
@@ -127,6 +127,7 @@ def fix_csv_ref_attributes(csv_row):
 
 
 def split_one_paper_into_n_papers(pid, paper_data):
+    items = []
     for abstract in paper_data.get("abstracts") or []:
         try:
             data_copy = deepcopy(paper_data)
@@ -134,6 +135,8 @@ def split_one_paper_into_n_papers(pid, paper_data):
             data_copy['pid'] = pid + "_" + abstract['lang']
             data_copy['main_lang'] = abstract['lang']
             data_copy['original_pid'] = pid
-            yield data_copy
+            items.append(data_copy)
         except Exception:
             continue
+    return items
+
