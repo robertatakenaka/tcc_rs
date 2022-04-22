@@ -52,12 +52,17 @@ def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, s
                     fp.write(f"{s}\n")
 
 
-def csv_rows_to_json(input_csv_file_path, output_file_path, fieldnames, create_paper=False):
+def csv_rows_to_json(input_csv_file_path, output_file_path, fieldnames, splitted_papers_pids_file_path=None, create_paper=False):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
     do artigo correspondente
     """
+
+    split = bool(splitted_papers_pids_file_path)
+    if splitted_papers_pids_file_path:
+        with open(splitted_papers_pids_file_path, "w") as fp:
+            fp.write("")
 
     with open(output_file_path, "w") as fp:
         fp.write("")
@@ -67,7 +72,13 @@ def csv_rows_to_json(input_csv_file_path, output_file_path, fieldnames, create_p
         for row in reader:
             try:
                 pid = row["pid"]
-                ret = tasks.csv_rows_to_json(pid, create_paper)
+                ret = tasks.csv_rows_to_json(pid, split, create_paper)
+
+                if splitted_papers_pids_file_path:
+                    items = "\n".join([_pid for _pid in ret['pids']])
+                    with open(splitted_papers_pids_file_path, "a") as fp:
+                        fp.write(f"{items}\n")
+
             except KeyError as e:
                 ret = {"error": "Missing pid %s" % str(row)}
             except ValueError as e:
@@ -85,7 +96,7 @@ def csv_rows_to_json(input_csv_file_path, output_file_path, fieldnames, create_p
                     fp.write(f"{s}\n")
 
 
-def json_to_paper(input_csv_file_path, output_file_path, fieldnames):
+def json_to_paper(input_csv_file_path, output_file_path, fieldnames, split):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
@@ -100,7 +111,7 @@ def json_to_paper(input_csv_file_path, output_file_path, fieldnames):
         for row in reader:
             try:
                 pid = row["pid"]
-                ret = tasks.json_to_paper(pid)
+                ret = tasks.json_to_paper(pid, split)
             except KeyError as e:
                 ret = {"error": "Missing pid %s" % str(row)}
             except ValueError as e:
@@ -178,6 +189,11 @@ def main():
         default=False,
         help='create_paper'
     )
+    csv2json_parser.add_argument(
+        '--splitted_papers_pids_file_path',
+        default=None,
+        help='splitted_papers_pids_file_path'
+    )
 
     json2paper_parser = subparsers.add_parser(
         'json2paper',
@@ -194,6 +210,12 @@ def main():
     json2paper_parser.add_argument(
         'fieldnames',
         help='fieldnames'
+    )
+    json2paper_parser.add_argument(
+        '--split',
+        type=bool,
+        default=False,
+        help='split'
     )
 
     args = parser.parse_args()
@@ -212,6 +234,7 @@ def main():
             args.input_csv_file_path,
             args.output_file_path,
             args.fieldnames.split(","),
+            args.splitted_papers_pids_file_path,
             args.create_paper,
         )
     elif args.command == 'json2paper':
@@ -219,6 +242,7 @@ def main():
             args.input_csv_file_path,
             args.output_file_path,
             args.fieldnames.split(","),
+            args.split,
         )
     else:
         parser.print_help()

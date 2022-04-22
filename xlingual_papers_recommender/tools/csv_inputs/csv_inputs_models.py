@@ -51,6 +51,7 @@ class CSVRow(Document):
 class PaperJSON(Document):
     pid = StringField()
     data = DictField()
+    original_pid = StringField()
 
     # datas deste registro
     created = DateTimeField()
@@ -60,6 +61,7 @@ class PaperJSON(Document):
         'collection': 'paper_as_json',
         'indexes': [
             'pid',
+            'original_pid',
         ]
     }
 
@@ -67,6 +69,7 @@ class PaperJSON(Document):
         return dict(
             pid=self.pid,
             data=self.data,
+            original_pid=self.original_pid,
         )
 
     def save(self, *args, **kwargs):

@@ -105,29 +105,32 @@ def _register_row(csv_row, pid, lang, name, row):
 
 ####################################
 
-def merge_csv(pid):
+def merge_csv(pid, split):
     """
     Register paper data as JSON
     """
     response = response_utils.create_response("merge_csv")
     try:
-        response['merged'] = _merge_csv(pid)
+        # obtém os registros das partes de um artigo
+        records = _get_cvs_row_records(pid)
+
+        # une os dados das partes do artigo
+        paper = csv_merger.merge_data(pid, records)
+
+        if split:
+            # gera N artigos a partir de um artigo com N resumos
+            papers = csv_merger.split_one_paper_into_n_papers(pid, paper)
+        else:
+            papers = [paper]
+        response['papers'] = papers
     except (
             csv_inputs_exceptions.CSVRowNotFoundError,
             csv_inputs_exceptions.CSVRowNotFoundUnexpectedError,
             Exception,
             ) as e:
-        response_utils.add_error(response, "Unable to register paper data as JSON", 400)
+        response_utils.add_error(response, "Unable to get paper json", 400)
         response_utils.add_exception(response, e)
     return response
-
-
-def _merge_csv(pid):
-    """
-    Merge cvs_row records, creating a JSON
-    """
-    records = _get_cvs_row_records(pid)
-    return csv_merger.merge_data(pid, records)
 
 
 def register_paper_data_as_json(input_data):
@@ -155,6 +158,7 @@ def register_paper_data_as_json(input_data):
 def _register_paper_data_as_json(paper_json, pid, input_data):
     paper_json.pid = pid
     paper_json.data = input_data
+    paper_json.original_pid = input_data.get("original_pid") or ''
     paper_json.save()
     return paper_json
 

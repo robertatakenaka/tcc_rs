@@ -353,35 +353,45 @@ def task_register_csv_row_data(row):
 
 ###########################################
 
-def csv_rows_to_json(pid, call_create_paper=False, get_result=None):
-    response = _merge_csv(pid, get_result=True)
 
+def csv_rows_to_json(pid, split=False, call_create_paper=False, get_result=None):
+    response = _merge_csv(pid, split, get_result=True)
     try:
-        paper_data = response["merged"]
+        papers = response["papers"]
     except KeyError:
         # nao obteve os dados
         return response
 
-    response = _register_json(paper_data, get_result)
+    resps = []
+    pids = []
 
-    if call_create_paper:
-        paper_data["get_result"] = get_result
-        response = create_paper(**paper_data)
+    for paper in papers:
+        resp = _register_json(paper, get_result)
+        pids.append(paper['pid'])
+
+        if call_create_paper:
+            paper = _fix_args_to_create_paper(paper)
+            resp = create_paper(**paper)
+
+        resps.append(resp)
+
+    response['resps'] = resps
+    response['pids'] = pids
 
     return response
 
 
-def _merge_csv(pid, get_result=None):
+def _merge_csv(pid, split, get_result=None):
     res = task__merge_csv.apply_async(
         queue=JOIN_CSV_QUEUE,
-        args=(pid, ),
+        args=(pid, split),
     )
     return _handle_result("task__merge_csv", res, get_result)
 
 
 @app.task()
-def task__merge_csv(pid):
-    return csv_inputs_controller.merge_csv(pid)
+def task__merge_csv(pid, split):
+    return csv_inputs_controller.merge_csv(pid, split)
 
 
 def _register_json(paper_json, get_result=None):
@@ -397,18 +407,27 @@ def task__register_json(paper_json):
     return csv_inputs_controller.register_paper_data_as_json(paper_json)
 
 
+def _fix_args_to_create_paper(data):
+    return dict(
+        network_collection=data.get('collection'),
+        pid=data['pid'],
+        main_lang=data.get("main_lang") or data.get("lang") or '',
+        doi=data.get("doi"),
+        pub_year=data['pid'][10:14],
+        uri=data.get("uri") or '',
+        subject_areas=list(set(data.get("subject_areas") or [])),
+        paper_titles=data.get("paper_titles") or [],
+        abstracts=data.get("abstracts") or [],
+        keywords=data.get("keywords") or [],
+        references=data.get("references") or [],
+        extra=data.get("extra"),
+        get_result=data.get("get_result"),
+    )
+
 ###########################################
 
 def json_to_paper(pid, get_result=None):
-    res = task_json_to_paper.apply_async(
-        queue=REGISTER_PAPER_QUEUE,
-        args=(pid, ),
-    )
-    return _handle_result("task_json_to_paper", res, get_result)
-
-
-@app.task()
-def task_json_to_paper(pid):
     paper_json = csv_inputs_controller.get_registered_paper_json(pid)
     paper_data = paper_json.data
+    paper_data = _fix_args_to_create_paper(paper_data)
     return create_paper(**paper_data)

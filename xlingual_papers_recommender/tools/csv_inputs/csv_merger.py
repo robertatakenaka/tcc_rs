@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 
 expected_reference_attributes = (
     'pub_year', 'vol', 'num', 'suppl', 'page',
@@ -13,7 +15,7 @@ expected_reference_attributes = (
 def merge_data(pid, records):
     data = dict(
         network_collection=None,
-        pid=None,
+        pid=pid,
         main_lang=None,
         doi=None,
         pub_year=None,
@@ -50,10 +52,10 @@ def merge_data(pid, records):
                 text=record_data["text"],
                 lang=record_data["lang"],
             )
-            data = add_item(data, records["name"], item)
+            data = add_item(data, record_data["name"], item)
         elif record["name"] == "references":
             item = fix_csv_ref_attributes(record_data)
-            data = add_item(data, records["name"], item)
+            data = add_item(data, record_data["name"], item)
     return data
 
 
@@ -122,3 +124,16 @@ def fix_csv_ref_attributes(csv_row):
 #             journals[issn].add(row['value'])
 
 #     return journals
+
+
+def split_one_paper_into_n_papers(pid, paper_data):
+    for abstract in paper_data.get("abstracts") or []:
+        try:
+            data_copy = deepcopy(paper_data)
+            data_copy['abstracts'] = [abstract]
+            data_copy['pid'] = pid + "_" + abstract['lang']
+            data_copy['main_lang'] = abstract['lang']
+            data_copy['original_pid'] = pid
+            yield data_copy
+        except Exception:
+            continue
