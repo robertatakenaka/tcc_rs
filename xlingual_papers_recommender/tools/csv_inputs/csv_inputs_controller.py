@@ -66,7 +66,7 @@ def _get_fields(row):
     return pid, lang, name
 
 
-def register_row(row):
+def register_row(row, skip_update):
     """
     Register "csv_row"
     """
@@ -75,11 +75,11 @@ def register_row(row):
         row = _fix_row(row)
         pid, lang, name = _get_fields(row)
 
-        response['params'] = {'pid': pid, 'skip_update': row.get("skip_update")}
+        response['params'] = {'pid': pid, 'skip_update': skip_update}
 
         try:
             csv_row = _get_csv_row(pid, lang, name)
-            if row.get("skip_update"):
+            if skip_update:
                 # item is already registered then skip update
                 return response
         except csv_inputs_exceptions.CSVRowNotFoundError:
@@ -158,14 +158,14 @@ def register_paper_data_as_json(input_data):
 def _register_paper_data_as_json(paper_json, pid, input_data):
     paper_json.pid = pid
     paper_json.data = input_data
-    paper_json.original_pid = input_data.get("original_pid") or ''
+    paper_json.a_pid = input_data.get("a_pid") or input_data.get("pid")
     paper_json.save()
     return paper_json
 
 
 def get_registered_paper_json(pid):
     try:
-        return db.get_records(PaperJSON, **{'pid': pid})[0]
+        return db.get_records(PaperJSON, **{'a_pid': pid})[0]
     except IndexError as e:
         raise csv_inputs_exceptions.PaperJsonNotFoundError(
             "Not found cvs_row: %s %s" % (e, pid)
