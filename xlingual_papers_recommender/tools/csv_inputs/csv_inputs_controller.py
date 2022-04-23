@@ -3,6 +3,7 @@ from html import unescape
 from xlingual_papers_recommender.db import (
     db,
 )
+from xlingual_papers_recommender.core import controller
 from xlingual_papers_recommender.utils import response_utils
 from xlingual_papers_recommender.tools.csv_inputs.csv_inputs_models import (
     CSVRow,
@@ -66,7 +67,7 @@ def _get_fields(row):
     return pid, lang, name
 
 
-def register_row(row):
+def register_row(row, skip_update):
     """
     Register "csv_row"
     """
@@ -75,11 +76,11 @@ def register_row(row):
         row = _fix_row(row)
         pid, lang, name = _get_fields(row)
 
-        response['params'] = {'pid': pid, 'skip_update': row.get("skip_update")}
+        response['params'] = {'pid': pid, 'skip_update': skip_update}
 
         try:
             csv_row = _get_csv_row(pid, lang, name)
-            if row.get("skip_update"):
+            if skip_update:
                 # item is already registered then skip update
                 return response
         except csv_inputs_exceptions.CSVRowNotFoundError:
@@ -158,14 +159,14 @@ def register_paper_data_as_json(input_data):
 def _register_paper_data_as_json(paper_json, pid, input_data):
     paper_json.pid = pid
     paper_json.data = input_data
-    paper_json.original_pid = input_data.get("original_pid") or ''
+    paper_json.a_pid = input_data.get("a_pid") or input_data.get("pid")
     paper_json.save()
     return paper_json
 
 
 def get_registered_paper_json(pid):
     try:
-        return db.get_records(PaperJSON, **{'pid': pid})[0]
+        return db.get_records(PaperJSON, **{'a_pid': pid})[0]
     except IndexError as e:
         raise csv_inputs_exceptions.PaperJsonNotFoundError(
             "Not found cvs_row: %s %s" % (e, pid)
@@ -174,3 +175,28 @@ def get_registered_paper_json(pid):
         raise csv_inputs_exceptions.PaperJsonNotFoundUnexpectedError(
             "Unexpected error: %s %s" % (e, pid)
         )
+
+
+def json_to_paper(pid, get_result=None):
+    paper_json = get_registered_paper_json(pid)
+    paper_data = paper_json.data
+    paper_data = _fix_args_to_create_paper(paper_data)
+    return controller.create_paper(**paper_data)
+
+
+def _fix_args_to_create_paper(data):
+    return dict(
+        network_collection=data.get('collection'),
+        pid=data['pid'],
+        main_lang=data.get("main_lang") or data.get("lang") or '',
+        doi=data.get("doi"),
+        pub_year=data['pid'][10:14],
+        uri=data.get("uri") or '',
+        subject_areas=list(set(data.get("subject_areas") or [])),
+        paper_titles=data.get("paper_titles") or [],
+        abstracts=data.get("abstracts") or [],
+        keywords=data.get("keywords") or [],
+        references=data.get("references") or [],
+        extra=data.get("extra"),
+        get_result=data.get("get_result"),
+    )
