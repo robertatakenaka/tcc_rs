@@ -21,6 +21,15 @@ def read_file(file_path):
         return fp.read()
 
 
+def read_file_rows(file_path):
+    try:
+        with open(file_path, "r") as fp:
+            for row in fp.readlines():
+                yield row.strip()
+    except IOError:
+        return []
+
+
 def read_csv_file(file_path):
     with open(file_path, newline='') as csvfile:
         reader = csv.DictReader(csvfile)

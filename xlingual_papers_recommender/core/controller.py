@@ -175,3 +175,10 @@ def find_and_create_connections(paper_pid):
 def get_connected_papers(pid, min_score=None):
     registered_paper = get_paper_by_pid(pid)
     return registered_paper.get_connections(min_score)
+
+
+def json_to_paper(pid, get_result=None):
+    paper_json = csv_inputs_controller.get_registered_paper_json(pid)
+    paper_data = paper_json.data
+    paper_data = _fix_args_to_create_paper(paper_data)
+    return create_paper(**paper_data)
