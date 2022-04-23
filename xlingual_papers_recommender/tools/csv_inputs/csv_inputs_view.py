@@ -34,7 +34,7 @@ def register_paper_part(part_name, input_csv_file_path, output_file_path, skip_u
             if len(row["pid"]) == 28:
                 row["ref_pid"] = row["pid"]
                 row["pid"] = row["pid"][:23]
-                row["lang"] = ''
+                row["lang"] = row["ref_pid"]
             row['name'] = part_name
             if not inclusion_list or row['pid'] in inclusion_list:
                 response = tasks.register_csv_row_data(row, skip_update)
