@@ -24,7 +24,13 @@ def register_paper_part(part_name, input_csv_file_path, output_file_path, skip_u
     references, langs, abstracts, ... e insere este dado no arquivo JSON
     do artigo correspondente
     """
-    inclusion_list = list(files_utils.read_csv_file(pids_selection_file_path))
+    try:
+        inclusion_list = [
+            item["pid"]
+            for item in files_utils.read_csv_file(pids_selection_file_path)
+        ]
+    except:
+        inclusion_list = []
 
     with open(output_file_path, "w") as fp:
         fp.write("")
@@ -36,7 +42,10 @@ def register_paper_part(part_name, input_csv_file_path, output_file_path, skip_u
                 row["pid"] = row["pid"][:23]
                 row["lang"] = row["ref_pid"]
             row['name'] = part_name
+            print(row)
+            print(inclusion_list[:5])
             if not inclusion_list or row['pid'] in inclusion_list:
+                inclusion_list.remove(row['pid'])
                 response = tasks.register_csv_row_data(row, skip_update)
             else:
                 response = {"pid": row['pid'], "skip_ingress": True}
