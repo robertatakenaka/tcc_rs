@@ -134,7 +134,7 @@ def split_one_paper_into_n_papers(pid, paper_data):
             data_copy['abstracts'] = [abstract]
             data_copy['pid'] = pid + "_" + abstract['lang']
             data_copy['main_lang'] = abstract['lang']
-            data_copy['original_pid'] = pid
+            data_copy['a_pid'] = pid
             items.append(data_copy)
         except Exception:
             continue
