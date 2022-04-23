@@ -338,23 +338,23 @@ def task_compare_papers(text, ids, texts):
 
 ###########################################
 
-def register_csv_row_data(row, get_result=None):
+def register_csv_row_data(row, skip_update=False, get_result=None):
     res = task_register_csv_row_data.apply_async(
         queue=REGISTER_ROW_QUEUE,
-        args=(row, ),
+        args=(row, skip_update),
     )
     return _handle_result("task_register_csv_row_data", res, get_result)
 
 
 @app.task()
-def task_register_csv_row_data(row):
-    return csv_inputs_controller.register_row(row)
+def task_register_csv_row_data(row, skip_update):
+    return csv_inputs_controller.register_row(row, skip_update)
 
 
 ###########################################
 
 
-def csv_rows_to_json(pid, split=False, call_create_paper=False, get_result=None):
+def csv_rows_to_json(pid, split=False, get_result=None):
     response = _merge_csv(pid, split, get_result=True)
     try:
         papers = response["papers"]
@@ -368,11 +368,6 @@ def csv_rows_to_json(pid, split=False, call_create_paper=False, get_result=None)
     for paper in papers:
         resp = _register_json(paper, get_result)
         pids.append(paper['pid'])
-
-        if call_create_paper:
-            paper = _fix_args_to_create_paper(paper)
-            resp = create_paper(**paper)
-
         resps.append(resp)
 
     response['resps'] = resps
@@ -423,11 +418,3 @@ def _fix_args_to_create_paper(data):
         extra=data.get("extra"),
         get_result=data.get("get_result"),
     )
-
-###########################################
-
-def json_to_paper(pid, get_result=None):
-    paper_json = csv_inputs_controller.get_registered_paper_json(pid)
-    paper_data = paper_json.data
-    paper_data = _fix_args_to_create_paper(paper_data)
-    return create_paper(**paper_data)

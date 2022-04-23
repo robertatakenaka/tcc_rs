@@ -1,102 +1,79 @@
 import logging
 import argparse
 import json
-import csv
 import os
 from datetime import datetime
-from xlingual_papers_recommender.core import tasks
+
+from xlingual_papers_recommender.core import tasks, controller
+from xlingual_papers_recommender.utils import files_utils
 
 
-def ingress_csv(data_label, fieldnames, input_csv_file_path, output_file_path, skip_update, inclusion_file_path):
+def write_output_file(output_file_path, response):
+    with open(output_file_path, "a") as fp:
+        try:
+            s = json.dumps(response)
+            fp.write(f"{s}\n")
+        except Exception as e:
+            print(e)
+            print(response)
+
+
+def register_paper_part(part_name, input_csv_file_path, output_file_path, skip_update, pids_selection_file_path):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
     do artigo correspondente
     """
-    inclusion_list = []
-    if inclusion_file_path:
-        with open(inclusion_file_path, "r") as fp:
-            inclusion_list = [item.strip() for item in fp.readlines()]
+    inclusion_list = list(files_utils.read_csv_file(pids_selection_file_path))
 
     with open(output_file_path, "w") as fp:
         fp.write("")
 
-    with open(input_csv_file_path, "r") as csvfile:
-        reader = csv.DictReader(csvfile, fieldnames=fieldnames)
-        for row in reader:
-            try:
-                if len(row["pid"]) == 28:
-                    row["ref_pid"] = row["pid"]
-                    row["pid"] = row["pid"][:23]
-                    row["lang"] = ''
-                row['name'] = data_label
-                row['skip_update'] = skip_update
-                if not inclusion_list or row['pid'] in inclusion_list:
-                    ret = tasks.register_csv_row_data(row)
-                else:
-                    ret = {"pid": row['pid'], "skip_ingress": True}
-            except KeyError as e:
-                ret = {"error": "Missing pid %s" % str(row)}
-            except ValueError as e:
-                ret = row
-            except Exception as e:
-                ret = {"error": "Ingress csv. Unexpected error %s %s" % (str(row), e)}
+    for row in files_utils.read_csv_file(input_csv_file_path):
+        try:
+            if len(row["pid"]) == 28:
+                row["ref_pid"] = row["pid"]
+                row["pid"] = row["pid"][:23]
+                row["lang"] = ''
+            row['name'] = part_name
+            if not inclusion_list or row['pid'] in inclusion_list:
+                response = tasks.register_csv_row_data(row, skip_update)
+            else:
+                response = {"pid": row['pid'], "skip_ingress": True}
+        except KeyError as e:
+            response = {"error": "Missing pid %s" % str(row)}
+        except ValueError as e:
+            response = row
+        except Exception as e:
+            response = {"error": "Ingress csv. Unexpected error %s %s" % (str(row), e)}
 
-            with open(output_file_path, "a") as fp:
-                try:
-                    s = json.dumps(ret)
-                except Exception as e:
-                    print(e)
-                    print(ret)
-                else:
-                    fp.write(f"{s}\n")
+        write_output_file(output_file_path, response)
 
 
-def csv_rows_to_json(input_csv_file_path, output_file_path, fieldnames, splitted_papers_pids_file_path=None, create_paper=False):
+def csv_rows_to_json(input_csv_file_path, output_file_path, split=False):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
     do artigo correspondente
     """
-
-    split = bool(splitted_papers_pids_file_path)
-    if splitted_papers_pids_file_path:
-        with open(splitted_papers_pids_file_path, "w") as fp:
-            fp.write("")
-
     with open(output_file_path, "w") as fp:
         fp.write("")
 
-    with open(input_csv_file_path, "r") as csvfile:
-        reader = csv.DictReader(csvfile, fieldnames=fieldnames)
-        for row in reader:
-            try:
-                pid = row["pid"]
-                ret = tasks.csv_rows_to_json(pid, split, create_paper)
+    for row in files_utils.read_csv_file(input_csv_file_path):
+        try:
+            pid = row["pid"]
+            response = tasks.csv_rows_to_json(pid, split)
+        except KeyError as e:
+            response = {"error": "Missing pid %s" % str(row)}
+        except ValueError as e:
+            response = row
+        except Exception as e:
+            response = {"error": "Create json from csv. Unexpected error %s %s" % (str(row), e)}
 
-                if splitted_papers_pids_file_path:
-                    items = "\n".join([_pid for _pid in ret['pids']])
-                    with open(splitted_papers_pids_file_path, "a") as fp:
-                        fp.write(f"{items}\n")
-
-            except KeyError as e:
-                ret = {"error": "Missing pid %s" % str(row)}
-            except ValueError as e:
-                ret = row
-            except Exception as e:
-                ret = {"error": "Create json from csv. Unexpected error %s %s" % (str(row), e)}
-
-            with open(output_file_path, "a") as fp:
-                try:
-                    s = json.dumps(ret)
-                except Exception as e:
-                    print(e)
-                    print(ret)
-                else:
-                    fp.write(f"{s}\n")
+        write_output_file(output_file_path, response)
 
 
-def json_to_paper(input_csv_file_path, output_file_path, fieldnames, split):
+def json_to_paper(input_csv_file_path, output_file_path):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
@@ -106,143 +83,112 @@ def json_to_paper(input_csv_file_path, output_file_path, fieldnames, split):
     with open(output_file_path, "w") as fp:
         fp.write("")
 
-    with open(input_csv_file_path, "r") as csvfile:
-        reader = csv.DictReader(csvfile, fieldnames=fieldnames)
-        for row in reader:
-            try:
-                pid = row["pid"]
-                ret = tasks.json_to_paper(pid, split)
-            except KeyError as e:
-                ret = {"error": "Missing pid %s" % str(row)}
-            except ValueError as e:
-                ret = row
-            except Exception as e:
-                ret = {"error": "Register paper. Unexpected error %s %s" % (str(row), e)}
+    for row in files_utils.read_csv_file(input_csv_file_path):
+        try:
+            pid = row["pid"]
+            response = controller.json_to_paper(pid)
+        except KeyError as e:
+            response = {"error": "Missing pid %s" % str(row)}
+        except ValueError as e:
+            response = row
+        except Exception as e:
+            response = {"error": "Register paper. Unexpected error %s %s" % (str(row), e)}
 
-            with open(output_file_path, "a") as fp:
-                try:
-                    s = json.dumps(ret)
-                except Exception as e:
-                    print(e)
-                    print(ret)
-                else:
-                    fp.write(f"{s}\n")
+        write_output_file(output_file_path, response)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Migration tool")
+    parser = argparse.ArgumentParser(description="Input tools")
     subparsers = parser.add_subparsers(title="Commands", metavar="", dest="command")
 
-    csv_parser = subparsers.add_parser(
-        'csv',
+    register_paper_part_parser = subparsers.add_parser(
+        'register_paper_part',
         help=("Lê arquivo `*.csv` que contém dados de um artigo"
-              " e registra na coleção raw")
+              " e registra na coleção csv_row")
     )
-    csv_parser.add_argument(
-        'item_name',
-        choices=["abstracts", "keywords", "paper_titles", "articles", "references"],
-        help='item_name'
+    register_paper_part_parser.add_argument(
+        'part_name',
+        choices=["abstracts", "references", "keywords", "paper_titles", "articles"],
+        help='part_name'
     )
-    csv_parser.add_argument(
-        'fieldnames',
-        help='fieldnames'
-    )
-    csv_parser.add_argument(
+    register_paper_part_parser.add_argument(
         'input_csv_file_path',
         help='input_csv_file_path'
     )
-    csv_parser.add_argument(
+    register_paper_part_parser.add_argument(
         'output_file_path',
         help='output_file_path'
     )
-    csv_parser.add_argument(
+    register_paper_part_parser.add_argument(
         '--skip_update',
         type=bool,
         default=False,
         help='skip_update'
     )
-    csv_parser.add_argument(
-        '--inclusion_file_path',
+    register_paper_part_parser.add_argument(
+        '--pids_selection_file_path',
         default=None,
-        help='inclusion_file_path'
+        help='pids_selection_file_path'
     )
 
-    csv2json_parser = subparsers.add_parser(
-        'csv2json',
-        help=("Lê arquivo `*.csv` que contém pid dos artigos")
+    merge_parts_parser = subparsers.add_parser(
+        'merge_parts',
+        help=("Une os componentes do artigo")
     )
-    csv2json_parser.add_argument(
+    merge_parts_parser.add_argument(
         'input_csv_file_path',
         help='input_csv_file_path'
     )
-    csv2json_parser.add_argument(
+    merge_parts_parser.add_argument(
         'output_file_path',
         help='output_file_path'
     )
-    csv2json_parser.add_argument(
-        'fieldnames',
-        help='fieldnames'
+    merge_parts_parser.add_argument(
+        '--split_into_n_papers',
+        default=None,
+        help='split_into_n_papers'
     )
-    csv2json_parser.add_argument(
+    merge_parts_parser.add_argument(
         '--create_paper',
         type=bool,
         default=False,
         help='create_paper'
     )
-    csv2json_parser.add_argument(
-        '--splitted_papers_pids_file_path',
-        default=None,
-        help='splitted_papers_pids_file_path'
-    )
 
-    json2paper_parser = subparsers.add_parser(
-        'json2paper',
+    register_paper_parser = subparsers.add_parser(
+        'register_paper',
         help=("Lê arquivo `*.csv` que contém pid dos artigos")
     )
-    json2paper_parser.add_argument(
+    register_paper_parser.add_argument(
         'input_csv_file_path',
         help='input_csv_file_path'
     )
-    json2paper_parser.add_argument(
+    register_paper_parser.add_argument(
         'output_file_path',
         help='output_file_path'
-    )
-    json2paper_parser.add_argument(
-        'fieldnames',
-        help='fieldnames'
-    )
-    json2paper_parser.add_argument(
-        '--split',
-        type=bool,
-        default=False,
-        help='split'
     )
 
     args = parser.parse_args()
 
-    if args.command == 'csv':
-        ingress_csv(
-            args.item_name,
-            args.fieldnames.split(","),
+    if args.command == 'register_paper_part':
+        register_paper_part(
+            args.part_name,
             args.input_csv_file_path,
             args.output_file_path,
             args.skip_update,
-            args.inclusion_file_path,
+            args.pids_selection_file_path,
         )
-    elif args.command == 'csv2json':
+    elif args.command == 'merge_parts':
         csv_rows_to_json(
             args.input_csv_file_path,
             args.output_file_path,
-            args.fieldnames.split(","),
-            args.splitted_papers_pids_file_path,
+            args.split_into_n_papers,
             args.create_paper,
         )
-    elif args.command == 'json2paper':
+    elif args.command == 'register_paper':
         json_to_paper(
             args.input_csv_file_path,
             args.output_file_path,
-            args.fieldnames.split(","),
-            args.split,
         )
     else:
         parser.print_help()
