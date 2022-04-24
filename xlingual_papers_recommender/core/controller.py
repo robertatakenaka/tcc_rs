@@ -1,13 +1,10 @@
 import logging
 
 from xlingual_papers_recommender.utils import response_utils
-from xlingual_papers_recommender.core import tasks, connections
+from xlingual_papers_recommender.core import tasks, connections, papers
 
-from xlingual_papers_recommender.db import (
-    db,
-)
+from xlingual_papers_recommender import exceptions
 from xlingual_papers_recommender.db.data_models import (
-    Paper,
     Journal,
     PROC_STATUS_NA,
     PROC_STATUS_SOURCE_REGISTERED,
@@ -34,31 +31,31 @@ def get_subject_areas(journal_issn):
         return journal.subject_areas
 
 
-def get_paper_by_pid(pid):
-    return db.get_records(Paper, **{'pid': pid})[0]
-
-
-def get_paper_by_record_id(_id):
-    return db.get_record_by__id(Paper, _id)
-
-
 def search_papers(text, subject_area, from_year, to_year):
     return connections.search_papers(text, subject_area, from_year, to_year)
 
 
-def create_paper(network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references, extra=None,
-                 ):
+def register_paper(network_collection, pid, main_lang, doi, pub_year,
+                   uri,
+                   subject_areas,
+                   paper_titles,
+                   abstracts,
+                   keywords,
+                   references, extra=None, skip_update=False,
+                   ):
 
-    response = response_utils.create_response("create_paper")
+    response = response_utils.create_response("register_paper")
 
-    # registra o novo documento
-    result_create_paper = tasks.create_paper(
+    if skip_update:
+        try:
+            paper = papers.get_paper_by_pid(pid)
+            response['skip_update'] = True
+            return response
+        except exceptions.PaperNotFoundError:
+            pass
+
+    # registra documento
+    result_register_paper = tasks.register_paper(
             network_collection, pid, main_lang, doi, pub_year,
             uri,
             subject_areas,
@@ -68,16 +65,9 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             references, extra,
             get_result=True,
         )
-    response.update(result_create_paper)
+    response.update(result_register_paper)
 
-    paper_id = response.get("registered_paper")
-
-    if not paper_id:
-        # finaliza se houve erro ao registrar
-        return response
-
-    # obtém os dados do documento registrado
-    paper = get_paper_by_record_id(paper_id)
+    paper = papers.get_paper_by_pid(pid)
 
     # cria ou atualiza os registros de sources usando os dados das referências
     result = _register_refs_sources(paper)
@@ -87,54 +77,7 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
         # finaliza se paper não tem dados para processar a similaridade
         return response
 
-    result = tasks.find_and_create_connections(paper_id)
-    response.update(result or {})
-    return response
-
-
-def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references, extra=None,
-                 ):
-
-    response = response_utils.create_response("update_paper")
-
-    # registra o novo documento
-    result_update_paper = tasks.update_paper(
-            _id,
-            network_collection, pid, main_lang, doi, pub_year,
-            uri,
-            subject_areas,
-            paper_titles,
-            abstracts,
-            keywords,
-            references, extra,
-            get_result=True,
-        )
-    response.update(result_update_paper)
-
-    paper_id = response.get("registered_paper")
-
-    if not paper_id:
-        # finaliza se houve erro ao registrar
-        return response
-
-    # obtém os dados do documento registrado
-    paper = get_paper_by_record_id(paper_id)
-
-    # cria ou atualiza os registros de sources usando os dados das referências
-    result = _register_refs_sources(paper)
-    response.update(result or {})
-
-    if paper.proc_status == PROC_STATUS_NA:
-        # finaliza se paper não tem dados para processar a similaridade
-        return response
-
-    result = tasks.find_and_create_connections(paper_id)
+    result = tasks.find_and_create_connections(paper._id)
     response.update(result or {})
     return response
 
@@ -168,10 +111,10 @@ def _register_refs_sources(paper):
 
 
 def find_and_create_connections(paper_pid):
-    paper = get_paper_by_pid(paper_pid)
+    paper = papers.get_paper_by_pid(paper_pid)
     return tasks.find_and_create_connections(paper._id)
 
 
 def get_connected_papers(pid, min_score=None):
-    registered_paper = get_paper_by_pid(pid)
+    registered_paper = papers.get_paper_by_pid(pid)
     return registered_paper.get_connections(min_score)

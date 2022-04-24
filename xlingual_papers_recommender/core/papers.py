@@ -45,24 +45,36 @@ REFERENCE_ATTRIBUTES = (
 
 
 def get_paper_by_pid(pid):
-    return db.get_records(Paper, **{'pid': pid})[0]
+    try:
+        return db.get_records(Paper, **{'pid': pid})[0]
+    except IndexError as e:
+        raise exceptions.PaperNotFoundError(
+            "Not found paper: %s %s" % (e, pid)
+        )
+    except Exception as e:
+        raise exceptions.PaperNotFoundUnexpectedError(
+            "Unexpected error: %s %s" % (e, pid)
+        )
 
 
 def get_paper_by_record_id(_id):
     return db.get_record_by__id(Paper, _id)
 
 
-def create_paper(network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references,
-                 extra=None,
-                 ):
-    response = response_utils.create_response("create_paper")
-    paper = Paper()
+def register_paper(network_collection, pid, main_lang, doi, pub_year,
+                   uri,
+                   subject_areas,
+                   paper_titles,
+                   abstracts,
+                   keywords,
+                   references,
+                   extra=None,
+                   ):
+    response = response_utils.create_response("register_paper")
+    try:
+        paper = get_paper_by_pid(pid)
+    except exceptions.PaperNotFoundError:
+        paper = Paper()
     try:
         registered_paper = _register_paper(
             paper,
@@ -76,56 +88,11 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             extra,
         )
         response['registered_paper'] = registered_paper._id
+
     except Exception as e:
         # mongoengine.errors.NotUniqueError
         # FIXME error code depende da excecao
         response_utils.add_error(response, "Unable to create paper", 400)
-        response_utils.add_exception(response, e)
-    return response
-
-
-def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references,
-                 extra=None,
-                 ):
-    response = response_utils.create_response("update_paper")
-    try:
-        if configuration.RS_PAPER_ID_IS_REQUIRED_TO_UPDATE:
-            if not _id:
-                raise exceptions.MissingPaperIdError(
-                    "Expected paper _id provided by Recommender System")
-
-            registered_paper = get_paper_by_record_id(_id)
-        else:
-            if not pid:
-                raise exceptions.MissingPaperIdError(
-                    "Expected paper pid")
-            registered_paper = get_paper_by_pid(pid)
-
-        if not registered_paper:
-            raise exceptions.UpdateDocumentError(
-                "Document which _id=%s is not registered. " % _id)
-
-        registered_paper = _register_paper(
-            registered_paper,
-            network_collection, pid, main_lang, doi, pub_year,
-            uri,
-            subject_areas,
-            paper_titles,
-            abstracts,
-            keywords,
-            references,
-            extra,
-        )
-        response['registered_paper'] = registered_paper._id
-    except Exception as e:
-        # FIXME error code depende da excecao
-        response_utils.add_error(response, "Unable to update paper", 400)
         response_utils.add_exception(response, e)
     return response
 
