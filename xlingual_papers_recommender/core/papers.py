@@ -44,12 +44,34 @@ REFERENCE_ATTRIBUTES = (
 )
 
 
+def create_paper():
+    return Paper()
+
+
 def get_paper_by_pid(pid):
-    return db.get_records(Paper, **{'pid': pid})[0]
+    try:
+        return db.get_records(Paper, **{'pid': pid})[0]
+    except IndexError as e:
+        raise exceptions.PaperNotFoundError(
+            "Not found paper: %s %s" % (e, pid)
+        )
+    except Exception as e:
+        raise exceptions.PaperNotFoundUnexpectedError(
+            "Unexpected error: %s %s" % (e, pid)
+        )
 
 
 def get_paper_by_record_id(_id):
-    return db.get_record_by__id(Paper, _id)
+    try:
+        return db.get_records(Paper, **{'_id': _id})[0]
+    except IndexError as e:
+        raise exceptions.PaperNotFoundError(
+            "Not found paper: %s %s" % (e, _id)
+        )
+    except Exception as e:
+        raise exceptions.PaperNotFoundUnexpectedError(
+            "Unexpected error: %s %s" % (e, _id)
+        )
 
 
 def create_paper(network_collection, pid, main_lang, doi, pub_year,

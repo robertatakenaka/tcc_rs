@@ -89,7 +89,7 @@ def csv_rows_to_json(input_csv_file_path, output_file_path, split=False):
         write_output_file(output_file_path, response)
 
 
-def json_to_paper(input_csv_file_path, output_file_path):
+def json_to_paper(input_csv_file_path, output_file_path, skip_update):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
@@ -102,7 +102,7 @@ def json_to_paper(input_csv_file_path, output_file_path):
     for row in files_utils.read_csv_file(input_csv_file_path):
         try:
             pid = row["pid"]
-            response = csv_inputs_controller.json_to_paper(pid)
+            response = csv_inputs_controller.json_to_paper(pid, skip_update)
         except KeyError as e:
             response = {"error": "Missing pid %s" % str(row)}
         except ValueError as e:
@@ -183,6 +183,12 @@ def main():
         'output_file_path',
         help='output_file_path'
     )
+    register_paper_parser.add_argument(
+        '--skip_update',
+        type=bool,
+        default=False,
+        help='skip_update'
+    )
 
     args = parser.parse_args()
 
@@ -204,6 +210,7 @@ def main():
         json_to_paper(
             args.input_csv_file_path,
             args.output_file_path,
+            args.skip_update,
         )
     else:
         parser.print_help()
