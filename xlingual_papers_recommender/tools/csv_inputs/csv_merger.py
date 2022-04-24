@@ -43,9 +43,10 @@ def merge_data(pid, records):
             data.get("pub_year") or pid[10:14]
         )
 
-        if record_data.get("subject_areas"):
+        subject_areas = record_data.get("subject_areas") or record_data.get("subject_area")
+        if subject_areas:
             data = add_item(
-                data, "subject_areas", record_data["subject_areas"])
+                data, "subject_areas", subject_areas)
 
         if record["name"] in ("paper_titles", "abstracts", "keywords"):
             item = dict(
