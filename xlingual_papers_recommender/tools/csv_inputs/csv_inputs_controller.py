@@ -177,11 +177,17 @@ def get_registered_paper_json(pid):
         )
 
 
-def json_to_paper(pid, get_result=None):
-    paper_json = get_registered_paper_json(pid)
-    paper_data = paper_json.data
-    paper_data = _fix_args_to_create_paper(paper_data)
-    return controller.create_paper(**paper_data)
+def json_to_paper(pid, skip_update=None):
+    responses = []
+    json_papers = db.get_records(PaperJSON, **{'a_pid': pid})
+
+    for j_paper in json_papers:
+        paper_data = j_paper.data
+        paper_data = _fix_args_to_create_paper(paper_data)
+        paper_data['skip_update'] = skip_update
+        resp = controller.register_paper(**paper_data)
+        responses.append(resp)
+    return responses
 
 
 def _fix_args_to_create_paper(data):
