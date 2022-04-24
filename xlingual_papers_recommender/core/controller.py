@@ -4,9 +4,7 @@ from xlingual_papers_recommender.utils import response_utils
 from xlingual_papers_recommender.core import tasks, connections, papers
 
 from xlingual_papers_recommender import exceptions
-from xlingual_papers_recommender.db import db
 from xlingual_papers_recommender.db.data_models import (
-    Paper,
     Journal,
     PROC_STATUS_NA,
     PROC_STATUS_SOURCE_REGISTERED,
@@ -48,13 +46,13 @@ def register_paper(network_collection, pid, main_lang, doi, pub_year,
 
     response = response_utils.create_response("register_paper")
 
-    try:
-        paper = papers.get_paper_by_pid(pid)
-        if skip_update:
+    if skip_update:
+        try:
+            paper = papers.get_paper_by_pid(pid)
             response['skip_update'] = True
             return response
-    except exceptions.PaperNotFoundError:
-        paper = papers.create_paper()
+        except exceptions.PaperNotFoundError:
+            pass
 
     # registra documento
     result_register_paper = tasks.register_paper(

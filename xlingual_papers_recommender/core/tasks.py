@@ -50,16 +50,16 @@ def _handle_result(task_name, result, get_result):
 
 ###########################################
 
-def create_paper(network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references, extra,
-                 get_result=None,
-                 ):
-    res = task_create_paper.apply_async(
+def register_paper(network_collection, pid, main_lang, doi, pub_year,
+                   uri,
+                   subject_areas,
+                   paper_titles,
+                   abstracts,
+                   keywords,
+                   references, extra,
+                   get_result=None,
+                   ):
+    res = task_register_paper.apply_async(
         queue=PAPERS_REGISTRATION_QUEUE,
         args=(
             network_collection, pid, main_lang, doi, pub_year,
@@ -71,11 +71,11 @@ def create_paper(network_collection, pid, main_lang, doi, pub_year,
             references, extra,
         ),
     )
-    return _handle_result("task create_paper", res, get_result)
+    return _handle_result("task register_paper", res, get_result)
 
 
 @app.task()
-def task_create_paper(
+def task_register_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
@@ -84,60 +84,7 @@ def task_create_paper(
         keywords,
         references, extra,
         ):
-    # # print("task_create_paper")
-    return papers.create_paper(
-        network_collection, pid, main_lang, doi, pub_year,
-        uri,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references, extra,
-    )
-
-
-###########################################
-
-def update_paper(_id, network_collection, pid, main_lang, doi, pub_year,
-                 uri,
-                 subject_areas,
-                 paper_titles,
-                 abstracts,
-                 keywords,
-                 references, extra,
-                 get_result=None,
-                 ):
-    # print("call task_update_paper")
-    res = task_update_paper.apply_async(
-        queue=PAPERS_REGISTRATION_QUEUE,
-        args=(
-            _id,
-            network_collection, pid, main_lang, doi, pub_year,
-            uri,
-            subject_areas,
-            paper_titles,
-            abstracts,
-            keywords,
-            references, extra,
-        ),
-    )
-    return _handle_result("task update_paper", res, get_result)
-
-
-@app.task()
-def task_update_paper(
-        _id,
-        network_collection, pid, main_lang, doi, pub_year,
-        uri,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references, extra,
-        ):
-    # # print("task_update_paper")
-    return papers.update_paper(
-        _id,
+    return papers.register_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
