@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime
 
-from xlingual_papers_recommender.core import tasks, controller
+from xlingual_papers_recommender.core import tasks, csv_inputs_controller
 from xlingual_papers_recommender.utils import files_utils
 
 
@@ -95,7 +95,7 @@ def json_to_paper(input_csv_file_path, output_file_path):
     for row in files_utils.read_csv_file(input_csv_file_path):
         try:
             pid = row["pid"]
-            response = controller.json_to_paper(pid)
+            response = csv_inputs_controller.json_to_paper(pid)
         except KeyError as e:
             response = {"error": "Missing pid %s" % str(row)}
         except ValueError as e:
