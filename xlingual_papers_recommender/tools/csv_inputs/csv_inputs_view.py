@@ -4,8 +4,9 @@ import json
 import os
 from datetime import datetime
 
-from xlingual_papers_recommender.core import tasks, csv_inputs_controller
+from xlingual_papers_recommender.core import tasks
 from xlingual_papers_recommender.utils import files_utils
+from xlingual_papers_recommender.tools.csv_inputs import csv_inputs_controller
 
 
 def write_output_file(output_file_path, response):
