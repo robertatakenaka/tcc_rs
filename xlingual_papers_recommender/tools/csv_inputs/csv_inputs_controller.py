@@ -169,7 +169,7 @@ def get_registered_paper_json(pid):
         return db.get_records(PaperJSON, **{'a_pid': pid})[0]
     except IndexError as e:
         raise csv_inputs_exceptions.PaperJsonNotFoundError(
-            "Not found cvs_row: %s %s" % (e, pid)
+            "Not found paper_json: %s %s" % (e, pid)
         )
     except Exception as e:
         raise csv_inputs_exceptions.PaperJsonNotFoundUnexpectedError(
@@ -198,5 +198,4 @@ def _fix_args_to_create_paper(data):
         keywords=data.get("keywords") or [],
         references=data.get("references") or [],
         extra=data.get("extra"),
-        get_result=data.get("get_result"),
     )
