@@ -8,74 +8,57 @@ from xlingual_papers_recommender.core import (
 from xlingual_papers_recommender.utils import files_utils
 
 
-def _register_new_papers(list_file_path, output_file_path):
+def register_papers(list_file_path, output_file_path, split_abstracts):
+    """
+    Registra `papers` a partir de um arquivo que contém uma lista de caminhos
+    de arquivos JSON que contém dados de artigo
+    """
     files_utils.write_file(output_file_path, "")
-    with open(list_file_path) as fp:
-        for json_file_path in fp.readlines():
-            json_file_path = json_file_path.strip()
-            try:
-                with open(json_file_path) as fpj:
-                    data = fpj.read()
-                data = json.loads(data)
-                response = controller.create_paper(**data)
-            except Exception as e:
-                response = {
-                    "json_file_path": json_file_path,
-                    "exception": str(type(e)), "msg": str(e),
-                }
-            finally:
-                files_utils.write_file(
-                    output_file_path, json.dumps(response) + "\n", "a")
+    for json_file_path in files_utils.read_file_rows(list_file_path):
+        try:
+            data = files_utils.read_file(json_file_path)
+            data = json.loads(data)
+            response = _register_papers(data, split_abstracts)
+        except Exception as e:
+            response = {
+                "json_file_path": json_file_path,
+                "exception": str(type(e)), "msg": str(e),
+            }
+        finally:
+            files_utils.write_file(
+                output_file_path, json.dumps(response) + "\n", "a")
 
 
-def _register_new_papers_split_abstracts(list_file_path, output_file_path):
-    files_utils.write_file(output_file_path, "")
-    with open(list_file_path) as fp:
-        for json_file_path in fp.readlines():
-            json_file_path = json_file_path.strip()
-            try:
-                with open(json_file_path) as fpj:
-                    data = fpj.read()
-                data = json.loads(data)
-                for abstract in data['abstracts']:
-
-                    try:
-                        data_copy = deepcopy(data)
-                        pid = abstract.get("pid") or data_copy.get("pid")
-                        if not pid:
-                            raise ValueError("PID is None for %s" % json_file_path)
-                        data_copy['abstracts'] = [abstract]
-                        data_copy['paper_titles'] = []
-                        data_copy['keywords'] = []
-                        data_copy['pid'] = pid + "_" + abstract['lang']
-                        response = controller.create_paper(**data_copy)
-                    except Exception as e:
-                        response = {
-                            "json_file_path": json_file_path,
-                            "exception": str(type(e)), "msg": str(e),
-                        }
-                    finally:
-                        files_utils.write_file(
-                            output_file_path, json.dumps(response) + "\n", "a")
-
-            except Exception as e:
-                response = {
-                    "json_file_path": json_file_path,
-                    "exception": str(type(e)), "msg": str(e),
-                }
-            finally:
-                files_utils.write_file(
-                    output_file_path, json.dumps(response) + "\n", "a")
-
-
-def register_new_papers(list_file_path, output_file_path, split_abstracts):
+def _register_papers(data, split_abstracts):
     if split_abstracts == "split_abstracts":
-        _register_new_papers_split_abstracts(list_file_path, output_file_path)
+        responses = []
+        for abstract in data['abstracts']:
+
+            try:
+                data_copy = deepcopy(data)
+                pid = abstract.get("pid") or data_copy.get("pid")
+                if not pid:
+                    raise ValueError("PID is None for %s" % data)
+                data_copy['abstracts'] = [abstract]
+                data_copy['paper_titles'] = []
+                data_copy['keywords'] = []
+                data_copy['pid'] = pid + "_" + abstract['lang']
+                data_copy['a_pid'] = pid
+
+                response = register_paper(**data_copy)
+            except Exception as e:
+                response = {
+                    "data": data,
+                    "exception": str(type(e)), "msg": str(e),
+                }
+            finally:
+                responses.append(response)
+        return responses
     else:
-        _register_new_papers(list_file_path, output_file_path)
+        return register_paper(**data)
 
 
-def receive_new_paper(
+def register_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
@@ -87,32 +70,7 @@ def receive_new_paper(
     """
     Cria paper
     """
-    return controller.create_paper(
-        network_collection, pid, main_lang, doi, pub_year,
-        uri,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references, extra,
-    )
-
-
-def update_paper(
-        _id,
-        network_collection, pid, main_lang, doi, pub_year,
-        uri,
-        subject_areas,
-        paper_titles,
-        abstracts,
-        keywords,
-        references, extra=None,
-        ):
-    """
-    Atualiza paper
-    """
-    return controller.update_paper(
-        _id,
+    return controller.register_paper(
         network_collection, pid, main_lang, doi, pub_year,
         uri,
         subject_areas,
@@ -155,7 +113,9 @@ def main():
         )
     )
     receive_paper_parser.add_argument(
-        "action",
+        "--skip_update",
+        type=bool,
+        default=False,
         help=(
             "new or update"
         )
@@ -265,15 +225,13 @@ def main():
     args = parser.parse_args()
     if args.command == "receive_paper":
         paper_data = json.loads(files_utils.read_file(args.source_file_path))
-        if args.action == "new":
-            response = receive_new_paper(**paper_data)
-        else:
-            response = update_paper(**paper_data)
+        paper_data['skip_update'] = args.skip_update
+        response = register_paper(**paper_data)
         files_utils.write_file(
             args.log_file_path, json.dumps(response) + "\n", "a")
 
     elif args.command == "register_new_papers":
-        register_new_papers(
+        register_papers(
             args.source_files_path, args.result_file_path, args.split_abstracts
         )
 

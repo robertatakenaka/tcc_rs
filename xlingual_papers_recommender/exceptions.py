@@ -30,6 +30,14 @@ class ReferenceConnectionSearchInputError(Exception):
     ...
 
 
+class PaperNotFoundUnexpectedError(Exception):
+    ...
+
+
+class PaperNotFoundError(Exception):
+    ...
+
+
 # class DocumentDoesNotExistError(Exception):
 #     ...
 
