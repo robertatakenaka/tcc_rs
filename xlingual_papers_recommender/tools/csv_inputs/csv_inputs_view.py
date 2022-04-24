@@ -192,7 +192,6 @@ def main():
             args.input_csv_file_path,
             args.output_file_path,
             args.split_into_n_papers,
-            args.create_paper,
         )
     elif args.command == 'register_paper':
         json_to_paper(

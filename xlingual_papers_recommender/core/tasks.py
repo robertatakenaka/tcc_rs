@@ -400,21 +400,3 @@ def _register_json(paper_json, get_result=None):
 @app.task()
 def task__register_json(paper_json):
     return csv_inputs_controller.register_paper_data_as_json(paper_json)
-
-
-def _fix_args_to_create_paper(data):
-    return dict(
-        network_collection=data.get('collection'),
-        pid=data['pid'],
-        main_lang=data.get("main_lang") or data.get("lang") or '',
-        doi=data.get("doi"),
-        pub_year=data['pid'][10:14],
-        uri=data.get("uri") or '',
-        subject_areas=list(set(data.get("subject_areas") or [])),
-        paper_titles=data.get("paper_titles") or [],
-        abstracts=data.get("abstracts") or [],
-        keywords=data.get("keywords") or [],
-        references=data.get("references") or [],
-        extra=data.get("extra"),
-        get_result=data.get("get_result"),
-    )

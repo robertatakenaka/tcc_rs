@@ -3,6 +3,7 @@ from html import unescape
 from xlingual_papers_recommender.db import (
     db,
 )
+from xlingual_papers_recommender.core import controller
 from xlingual_papers_recommender.utils import response_utils
 from xlingual_papers_recommender.tools.csv_inputs.csv_inputs_models import (
     CSVRow,
@@ -174,3 +175,28 @@ def get_registered_paper_json(pid):
         raise csv_inputs_exceptions.PaperJsonNotFoundUnexpectedError(
             "Unexpected error: %s %s" % (e, pid)
         )
+
+
+def json_to_paper(pid, get_result=None):
+    paper_json = get_registered_paper_json(pid)
+    paper_data = paper_json.data
+    paper_data = _fix_args_to_create_paper(paper_data)
+    return controller.create_paper(**paper_data)
+
+
+def _fix_args_to_create_paper(data):
+    return dict(
+        network_collection=data.get('collection'),
+        pid=data['pid'],
+        main_lang=data.get("main_lang") or data.get("lang") or '',
+        doi=data.get("doi"),
+        pub_year=data['pid'][10:14],
+        uri=data.get("uri") or '',
+        subject_areas=list(set(data.get("subject_areas") or [])),
+        paper_titles=data.get("paper_titles") or [],
+        abstracts=data.get("abstracts") or [],
+        keywords=data.get("keywords") or [],
+        references=data.get("references") or [],
+        extra=data.get("extra"),
+        get_result=data.get("get_result"),
+    )
