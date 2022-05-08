@@ -86,20 +86,17 @@ def _register_refs_sources(paper):
     response = response_utils.create_response("register_refs_sources")
 
     if not paper.proc_status == PROC_STATUS_SOURCE_REGISTERED:
-        print("register_refs_sources", paper.proc_status)
         return response
 
     for ref in paper.references:
         if not ref.has_data_enough:
             continue
         try:
-            print("call tasks.add_referenced_by_to_source")
             result = tasks.add_referenced_by_to_source(
                 ref.as_dict, paper._id,
                 paper.pid, paper.pub_year, paper.subject_areas,
                 paper.proc_status == PROC_STATUS_SOURCE_REGISTERED,
             )
-            print(result)
             if result == PROC_STATUS_TODO:
                 paper.proc_status = PROC_STATUS_TODO
                 paper.save()

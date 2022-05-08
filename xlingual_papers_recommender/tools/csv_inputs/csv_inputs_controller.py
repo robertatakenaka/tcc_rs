@@ -17,7 +17,7 @@ from xlingual_papers_recommender.tools.csv_inputs import (
 
 def _get_cvs_row_records(pid):
     try:
-        return db.get_records(CSVRow, **{'pid': pid})
+        return db.get_records(CSVRow, **{'pid': pid, 'items_per_page': 500})
     except IndexError as e:
         raise csv_inputs_exceptions.CSVRowNotFoundError(
             "Not found cvs_row: %s %s" % (e, pid)
@@ -115,8 +115,13 @@ def merge_csv(pid, split):
         # obtém os registros das partes de um artigo
         records = _get_cvs_row_records(pid)
 
+        print("records: ")
+        print(len(records))
+
         # une os dados das partes do artigo
         paper = csv_merger.merge_data(pid, records)
+        print("merged abstracts")
+        print(paper['abstracts'])
 
         if split:
             # gera N artigos a partir de um artigo com N resumos
@@ -179,13 +184,20 @@ def get_registered_paper_json(pid):
 
 def json_to_paper(pid, skip_update=None):
     responses = []
+    print(pid)
     json_papers = db.get_records(PaperJSON, **{'a_pid': pid})
-
+    print(len(json_papers))
     for j_paper in json_papers:
+        print(j_paper.data["pid"], j_paper.data["a_pid"])
+        resp = {}
         paper_data = j_paper.data
         paper_data = _fix_args_to_create_paper(paper_data)
         paper_data['skip_update'] = skip_update
-        resp = controller.register_paper(**paper_data)
+        resp.update(paper_data)
+
+        _resp = controller.register_paper(**paper_data)
+        resp.update(_resp)
+
         responses.append(resp)
     return responses
 
