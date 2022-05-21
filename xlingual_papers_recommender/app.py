@@ -120,7 +120,7 @@ def main():
         type=bool,
         default=False,
         help=(
-            "new or update"
+            "if it is already registered, skip_update do not update"
         )
     )
     receive_paper_parser.add_argument(
@@ -208,7 +208,7 @@ def main():
     get_connected_papers_parser.add_argument(
         "--min_score",
         help=(
-            "min_score"
+            "value for the minimum score. Ex.: 0.7"
         )
     )
 
@@ -247,7 +247,8 @@ def main():
         _display_response(response, pretty=False)
 
     elif args.command == "get_connected_papers":
-        response = get_connected_papers(args.pid, args.min_score)
+        min_score = float(args.min_score or 0)
+        response = get_connected_papers(args.pid, min_score)
         _display_response(response, pretty=False)
 
     elif args.command == "find_and_create_connections":

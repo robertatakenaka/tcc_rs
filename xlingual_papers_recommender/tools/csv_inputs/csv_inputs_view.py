@@ -121,8 +121,7 @@ def main():
 
     register_paper_part_parser = subparsers.add_parser(
         'register_paper_part',
-        help=("Lê arquivo `*.csv` que contém dados de um artigo"
-              " e registra na coleção csv_row")
+        help=("Load papers data from CSV file (abstracts, references, keywords, paper_titles, articles)")
     )
     register_paper_part_parser.add_argument(
         'part_name',
@@ -131,65 +130,65 @@ def main():
     )
     register_paper_part_parser.add_argument(
         'input_csv_file_path',
-        help='input_csv_file_path'
+        help='CSV file with papers part data'
     )
     register_paper_part_parser.add_argument(
         'output_file_path',
-        help='output_file_path'
+        help='jsonl output file path'
     )
     register_paper_part_parser.add_argument(
         '--skip_update',
         type=bool,
         default=False,
-        help='skip_update'
+        help='True to skip if paper is already registered'
     )
     register_paper_part_parser.add_argument(
         '--pids_selection_file_path',
         default=None,
-        help='pids_selection_file_path'
+        help='Selected papers ID file path (CSV file path which has "pid" column)'
     )
 
     merge_parts_parser = subparsers.add_parser(
         'merge_parts',
-        help=("Une os componentes do artigo")
+        help=("Merge papers parts")
     )
     merge_parts_parser.add_argument(
         'input_csv_file_path',
-        help='input_csv_file_path'
+        help='Selected papers ID file path (CSV file path which has "pid" column)'
     )
     merge_parts_parser.add_argument(
         'output_file_path',
-        help='output_file_path'
+        help='jsonl output file path'
     )
     merge_parts_parser.add_argument(
         '--split_into_n_papers',
         default=None,
-        help='split_into_n_papers'
+        help='True to create one register for each abstract'
     )
     merge_parts_parser.add_argument(
         '--create_paper',
         type=bool,
         default=False,
-        help='create_paper'
+        help='True to register papers'
     )
 
     register_paper_parser = subparsers.add_parser(
         'register_paper',
-        help=("Lê arquivo `*.csv` que contém pid dos artigos")
+        help=("Register papers given a list of papers ID")
     )
     register_paper_parser.add_argument(
         'input_csv_file_path',
-        help='input_csv_file_path'
+        help='Selected papers ID file path (CSV file path which has "pid" column)'
     )
     register_paper_parser.add_argument(
         'output_file_path',
-        help='output_file_path'
+        help='jsonl output file path'
     )
     register_paper_parser.add_argument(
         '--skip_update',
         type=bool,
         default=False,
-        help='skip_update'
+        help='True to skip if paper is already registered'
     )
 
     args = parser.parse_args()
