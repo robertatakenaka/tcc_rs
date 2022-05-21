@@ -177,7 +177,7 @@ Example:
 xlingual_papers_recommender_ds_loader register_paper_part articles articles.csv articles.jsonl
 ```
 
-** Required columns**
+**Required columns**
 
 - pid
 - main_lang
