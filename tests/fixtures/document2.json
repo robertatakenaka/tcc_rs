@@ -1,0 +1,17 @@
+{
+	"pid": "9875678901234567890992",
+	"network_collection": "scl",
+	"pub_year": "2013",
+	"doi": "192053",
+    "main_lang": "es",
+	"uri": "",
+	"subject_areas": ["Health Sciences"],
+	"paper_titles": [],
+	"keywords": [],
+	"abstracts": [
+		{"lang": "es", "text": "Esto es un resumen"}
+	],
+	"references": [
+		{"pub_year": "1900", "surname": "Smith", "journal": "Journal"}
+	]
+}
