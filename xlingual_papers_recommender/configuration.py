@@ -35,9 +35,7 @@ MIN_SCORE = float(os.environ.get("MIN_SCORE") or 0.7)
 ####################################################
 
 # mongodb://my_user:my_password@127.0.0.1:27017/my_db
-DATABASE_CONNECT_URL = os.environ.get("DATABASE_CONNECT_URL")
-if not DATABASE_CONNECT_URL:
-    raise ValueError("Not found value for DATABASE_CONNECT_URL")
+DATABASE_CONNECT_URL = os.environ.get("DATABASE_CONNECT_URL") or "mongodb://127.0.0.1:27017/xlpr"
 
 WAIT_SOURCES_REGISTRATIONS = int(os.environ.get("WAIT_SOURCES_REGISTRATIONS") or 1)
 ITEMS_PER_PAGE = int(os.environ.get("ITEMS_PER_PAGE") or 10)

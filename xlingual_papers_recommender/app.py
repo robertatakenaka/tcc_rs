@@ -6,6 +6,7 @@ from xlingual_papers_recommender.core import (
     controller,
 )
 from xlingual_papers_recommender.utils import files_utils
+from xlingual_papers_recommender.configuration import DATABASE_CONNECT_URL
 
 
 def register_papers(list_file_path, output_file_path, split_abstracts):
@@ -101,7 +102,9 @@ def _display_response(response, pretty=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Recommender System utils")
+    parser = argparse.ArgumentParser(
+        description="Main Papers Recommender System operations"
+    )
     subparsers = parser.add_subparsers(
         title="Commands", metavar="", dest="command",
     )
@@ -223,6 +226,9 @@ def main():
     )
 
     args = parser.parse_args()
+    if not DATABASE_CONNECT_URL:
+        raise ValueError("Invalid value for DATABASE_CONNECT_URL. Expected: mongodb://my_user:my_password@127.0.0.1:27017/my_db")
+
     if args.command == "receive_paper":
         paper_data = json.loads(files_utils.read_file(args.source_file_path))
         paper_data['skip_update'] = args.skip_update
