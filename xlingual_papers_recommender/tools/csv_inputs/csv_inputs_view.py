@@ -77,6 +77,7 @@ def csv_rows_to_json(input_csv_file_path, output_file_path, split=False):
 
     for row in files_utils.read_csv_file(input_csv_file_path):
         try:
+            print(row)
             pid = row["pid"]
             response = tasks.csv_rows_to_json(pid, split)
         except KeyError as e:
@@ -100,13 +101,14 @@ def json_to_paper(input_csv_file_path, output_file_path, skip_update):
         fp.write("")
 
     for row in files_utils.read_csv_file(input_csv_file_path):
+        print(row)
         try:
             pid = row["pid"]
             response = csv_inputs_controller.json_to_paper(pid, skip_update)
         except KeyError as e:
             response = {"error": "Missing pid %s" % str(row)}
         except ValueError as e:
-            response = row
+            response = {"error": "%s %s" % (row, str(e))}
         except Exception as e:
             response = {"error": "Register paper. Unexpected error %s %s" % (str(row), e)}
 

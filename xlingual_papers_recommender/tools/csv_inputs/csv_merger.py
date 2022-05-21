@@ -29,12 +29,15 @@ def merge_data(pid, records):
 
     for record in records:
         record_data = record["data"]
+        field_name = record["name"]
+        lang = record["lang"]
+        _lang = record_data.get("lang")
 
         data["network_collection"] = (
             data.get("network_collection") or record_data.get("collection") or record_data.get("collection.x")
         )
         data["main_lang"] = (
-            data.get("main_lang") or record_data.get("lang")
+            data.get("main_lang") or lang
         )
         data["doi"] = (
             data.get("doi") or record_data.get("doi")
@@ -48,22 +51,23 @@ def merge_data(pid, records):
             data = add_item(
                 data, "subject_areas", subject_areas)
 
-        if record["name"] in ("paper_titles", "abstracts", "keywords"):
+        if field_name in ("paper_titles", "abstracts", "keywords"):
             item = dict(
                 text=record_data.get("original"),
-                lang=record_data["lang"],
+                lang=lang,
             )
-            data = add_item(data, record_data["name"], item)
-        elif record["name"] == "references":
+            data = add_item(data, field_name, item)
+        elif field_name == "references":
             item = fix_csv_ref_attributes(record_data)
-            data = add_item(data, record_data["name"], item)
+            data = add_item(data, field_name, item)
+
     return data
 
 
-def add_item(data, data_label, item):
-    data[data_label] = data.get(data_label) or []
-    if item not in data[data_label]:
-        data[data_label].append(item)
+def add_item(data, field_name, item):
+    data[field_name] = data.get(field_name) or []
+    if item not in data[field_name]:
+        data[field_name].append(item)
     return data
 
 
