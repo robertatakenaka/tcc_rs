@@ -18,6 +18,41 @@ Designed to be customizable in many ways:
 - celery
 - mongoengine
 
+## Sentence transformer models
+
+Choose one of the models:
+https://huggingface.co/models?library=sentence-transformers&pipeline_tag=sentence-similarity&sort=downloads&search=multilingual
+
+For instance, paraphrase-xlm-r-multilingual-v1.
+
+The instructions below you can get from "**</> Use in sentence-transformers**" button found at any hugging face model web page.
+
+```console
+git lfs install
+git clone https://huggingface.co/sentence-transformers/paraphrase-xlm-r-multilingual-v1
+# if you want to clone without large files – just their pointers
+# prepend your git clone with the following env var:
+GIT_LFS_SKIP_SMUDGE=1
+```
+Move `paraphrase-xlm-r-multilingual-v1` to the folder where you will keep the models, for instance, `/path/my_sentence_transformers_models`
+
+If you get any error related to `git lfs`. Check https://git-lfs.github.com/.
+
+
+
+## MongoDB
+
+```console
+docker pull mongo
+docker run -d -p 27017:27017 --name papers_recommeder_mongo mongo:latest
+```
+
+## Rabbitmq
+
+```console
+docker pull rabbitmq
+docker run -d -p 5672:5672 --name papers_recommeder_rabbitmq rabbitmq
+```
 
 # Model
 
@@ -44,9 +79,8 @@ pip install -U xlingual_papers_recommender
 export DATABASE_CONNECT_URL=mongodb://my_user:my_password@127.0.0.1:27017/my_db
 export CELERY_BROKER_URL="amqp://guest@0.0.0.0:5672//"
 export CELERY_RESULT_BACKEND_URL="rpc://"
-export MODELS_PATH=sentence_transformers_models
+export MODELS_PATH=/path/my_sentence_transformers_models
 export DEFAULT_MODEL=paraphrase-xlm-r-multilingual-v1
-
 ```
 
 # Celery
